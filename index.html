@@ -1,0 +1,2254 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>k.k. Protokoll- & Anwesenheits-Manager (Cloud)</title>
+<style>
+  :root {
+    --bg: #121417;
+    --surface: #1c1f24;
+    --surface-hover: #252930;
+    --border: #2e333b;
+    --text: #e6e8eb;
+    --text-muted: #9ba1a6;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --radius: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    padding-bottom: 50px;
+  }
+
+  header {
+    background-color: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .header-left { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+  header h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+  
+  .sync-status {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 99px;
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+  .sync-status.ok { background: rgba(16, 185, 129, 0.15); color: #34d399; border-color: rgba(16, 185, 129, 0.3); }
+  .sync-status.err { background: rgba(239, 68, 68, 0.15); color: #f87171; border-color: rgba(239, 68, 68, 0.3); }
+
+  nav { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  nav button {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 0.5rem 1rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  nav button:hover { background: var(--surface-hover); color: #fff; }
+  nav button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+  main { max-width: 1350px; margin: 2rem auto; padding: 0 1rem; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .card h2 { font-size: 1.1rem; margin-bottom: 1rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .form-group { margin-bottom: 1rem; }
+  label { display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.35rem; font-weight: 600; }
+  input[type="text"], input[type="date"], input[type="number"], select, textarea {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.6rem 0.75rem;
+    border-radius: var(--radius);
+    font-family: inherit;
+    font-size: 0.95rem;
+  }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary); }
+
+  .btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  .btn:hover { background: var(--primary-hover); }
+  .btn-success { background: var(--success); }
+  .btn-success:hover { background: #059669; }
+  .btn-danger { background: var(--danger); }
+  .btn-danger:hover { background: #dc2626; }
+  .btn-secondary { background: var(--surface-hover); border: 1px solid var(--border); }
+  .btn-secondary:hover { background: #323741; }
+  .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
+
+  /* Anwesenheitsliste */
+  .attendance-row {
+    display: grid;
+    grid-template-columns: 2fr 2.2fr 1.5fr;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .attendance-row:last-child { border-bottom: none; }
+  .attendance-row:hover { background: var(--surface-hover); }
+
+  /* Teamkill-Liste */
+  .tk-row {
+    display: grid;
+    grid-template-columns: 3fr 1fr;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .tk-row:last-child { border-bottom: none; }
+  .tk-row:hover { background: var(--surface-hover); }
+  
+  .radio-group { display: flex; gap: 0.35rem; }
+  .radio-pill {
+    flex: 1;
+    text-align: center;
+    cursor: pointer;
+  }
+  .radio-pill input { display: none; }
+  .radio-pill span {
+    display: block;
+    padding: 0.3rem 0.4rem;
+    border-radius: 5px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+  .radio-pill input[value="present"]:checked + span { background: rgba(16, 185, 129, 0.2); border-color: var(--success); color: var(--success); }
+  .radio-pill input[value="excused"]:checked + span { background: rgba(245, 158, 11, 0.2); border-color: var(--warning); color: var(--warning); }
+  .radio-pill input[value="unexcused"]:checked + span { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
+
+  /* Rekord-Boxen (3 Spalten) */
+  .record-box-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+  @media (max-width: 900px) { .record-box-grid { grid-template-columns: 1fr; } }
+  .record-box {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+  }
+  .record-box h3 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+  .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0.2rem; }
+  .record-details { font-size: 0.82rem; color: var(--text); }
+
+  /* Chart Container */
+  .chart-container {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    height: 240px;
+  }
+  .chart-legend {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    justify-content: center;
+    margin-bottom: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+  /* BBCode Preview Box */
+  .preview-box {
+    background: #fff;
+    color: #111;
+    padding: 1.25rem;
+    border-radius: var(--radius);
+    font-family: Verdana, Arial, sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .bbcode-raw {
+    font-family: Consolas, Monaco, monospace;
+    font-size: 0.85rem;
+    height: 250px;
+    resize: vertical;
+  }
+
+  /* Tabellen */
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+  th { color: var(--text-muted); font-weight: 600; background: rgba(0,0,0,0.2); }
+  tr:hover td { background: var(--surface-hover); }
+
+  .badge {
+    display: inline-block;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .badge-napo { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+  .badge-bre { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+  .badge-inactive { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success);
+    color: #fff;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius);
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: all 0.3s;
+    pointer-events: none;
+    z-index: 1000;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>📜 k.k. Protokoll-Generator</h1>
+    <span id="sync-badge" class="sync-status">🔄 Lade Cloud-Daten...</span>
+    <button class="btn btn-sm btn-secondary" onclick="loadFromCloud(true)">↻ Sync</button>
+  </div>
+  <nav>
+    <button class="active" onclick="switchTab('editor', this)">Protokoll</button>
+    <button onclick="switchTab('teamkills', this)">Teamkills</button>
+    <button onclick="switchTab('history', this)">Verlauf (<span id="nav-history-count">0</span>)</button>
+    <button onclick="switchTab('stats', this)">Statistiken</button>
+    <button onclick="switchTab('members', this)">Mitgliederliste</button>
+    <button onclick="switchTab('templates', this)">Templates</button>
+    <button onclick="switchTab('backup', this)">Backup / Daten</button>
+  </nav>
+</header>
+
+<main>
+  <!-- TAB 1: EDITOR (PROTOKOLL) -->
+  <div id="tab-editor" class="tab-content active">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <h2>1. Event & Kopfdaten</h2>
+          <input type="hidden" id="edit-protocol-id" value="">
+          
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label>Event-Format (Wochenrhythmus)</label>
+              <select id="proto-format" onchange="onFormatChange()">
+                <!-- Wird dynamisch gefüllt -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Datum</label>
+              <input type="date" id="proto-date" onchange="updateOutput()">
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label id="lbl-leader">Leitender Offizier</label>
+              <input type="text" id="proto-leader" value="Oberst Darthkiller" oninput="updateOutput()">
+            </div>
+            <div class="form-group" id="grp-subleader">
+              <label>Stellv. Offizier</label>
+              <input type="text" id="proto-subleader" value="/" oninput="updateOutput()">
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label>Schriftführer</label>
+              <input type="text" id="proto-scribe" value="Fähnrich Lorenz" oninput="updateOutput()">
+            </div>
+            <div class="form-group" id="grp-troop">
+              <label>Eingesetzte Truppenklasse</label>
+              <input type="text" id="proto-troop" value="Linieninfanterie" oninput="updateOutput()">
+            </div>
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem;" id="grp-awards">
+            <div class="form-group" id="grp-promotions">
+              <label>Rangaufstiege</label>
+              <input type="text" id="proto-promotions" value="/" oninput="updateOutput()">
+            </div>
+            <div class="form-group">
+              <label>Erreichte Auszeichnungen</label>
+              <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Entsatzspieler / Gäste (optional)</label>
+            <input type="text" id="proto-mercs" value="/" oninput="updateOutput()">
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">2. Anwesenheit (<span id="unit-badge">Nr59</span>)</h2>
+          </div>
+          <div id="attendance-list"></div>
+        </div>
+
+        <div class="card">
+          <h2>3. Bericht & Fazit</h2>
+          <div class="form-group">
+            <label id="lbl-summary">Kurzzusammenfassung des Ereignisses</label>
+            <textarea id="proto-summary" rows="3" oninput="updateOutput()">-/-</textarea>
+          </div>
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label style="color:#408000;">Positiv hervorzuheben</label>
+              <input type="text" id="proto-pos" value="-/-" oninput="updateOutput()">
+            </div>
+            <div class="form-group">
+              <label style="color:#BF0040;">Negativ hervorzuheben</label>
+              <input type="text" id="proto-neg" value="-/-" oninput="updateOutput()">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Anmerkungen</label>
+            <input type="text" id="proto-notes" value="-/-" oninput="updateOutput()">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="position: sticky; top: 1rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">4. Fertiges Protokoll</h2>
+            <div style="display:flex; gap:0.5rem;">
+              <button class="btn btn-secondary btn-sm" onclick="copyBBCode()">📋 BBCode kopieren</button>
+              <button class="btn btn-success btn-sm" onclick="saveProtocol()">☁️ Speichern & Sync</button>
+            </div>
+          </div>
+
+          <label>BBCode zum Kopieren (inkl. [b], [color], Summen):</label>
+          <textarea id="bbcode-output" class="bbcode-raw" readonly></textarea>
+
+          <label style="margin-top:1rem;">Live-Vorschau (wie im Forum):</label>
+          <div id="html-preview" class="preview-box"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: TEAMKILLS -->
+  <div id="tab-teamkills" class="tab-content">
+    <div class="grid-2">
+      <div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">Teamkills erfassen</h2>
+            <button class="btn btn-success btn-sm" onclick="saveTeamkillLog()">☁️ Teamkills speichern & Sync</button>
+          </div>
+          
+          <input type="hidden" id="edit-tk-id" value="">
+
+          <div class="grid-2" style="gap: 0.75rem;">
+            <div class="form-group">
+              <label>Event-Format</label>
+              <select id="tk-format" onchange="onTkFormatChange()">
+                <!-- Wird dynamisch mit TK-fähigen Events gefüllt -->
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Datum</label>
+              <input type="date" id="tk-date" onchange="loadExistingTkForDate()">
+            </div>
+          </div>
+
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+            Hier kannst du parallel zur Protokollerstellung die Teamkills für das ausgewählte Event eintragen.
+          </p>
+
+          <div id="tk-member-list"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">Regiment & Rekorde (<span id="record-year-title">Gesamt</span>)</h2>
+          </div>
+          <div class="record-box-grid">
+            <div class="record-box">
+              <h3>Regiments-Durchschnitt</h3>
+              <div id="record-avg-val" class="record-value">0.0 TKs</div>
+              <div id="record-avg-details" class="record-details">Pro Event</div>
+            </div>
+            <div class="record-box">
+              <h3>Regiments-Rekord</h3>
+              <div id="record-reg-val" class="record-value">0 TKs</div>
+              <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
+            </div>
+            <div class="record-box">
+              <h3>Einzelspieler-Rekord</h3>
+              <div id="record-player-val" class="record-value">0 TKs</div>
+              <div id="record-player-details" class="record-details">Max. an einem Event</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">Teamkill-Statistik</h2>
+            <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+              <select id="tk-stats-filter" onchange="renderTkStats()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
+                <option value="all">Alle Events</option>
+                <option value="napo_all">Alle Nr59-Events</option>
+              </select>
+              <select id="tk-stats-year-filter" onchange="onTkYearFilterChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
+                <option value="all">Alle Jahre</option>
+              </select>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Mitglied</th>
+                <th>Einheit</th>
+                <th style="color:var(--danger);">Teamkills</th>
+                <th>Anwesend</th>
+                <th style="color:var(--danger);">TK / Event</th>
+              </tr>
+            </thead>
+            <tbody id="tk-stats-body"></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Gespeicherte Teamkill-Einträge</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Event</th>
+                <th>Gesamt-TKs</th>
+                <th>Aktionen</th>
+              </tr>
+            </thead>
+            <tbody id="tk-history-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: VERLAUF -->
+  <div id="tab-history" class="tab-content">
+    <div class="card">
+      <h2>Gespeicherte Protokolle (Gemeinsamer Verlauf)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Format / Event</th>
+            <th>Anwesend</th>
+            <th>Abgemeldet</th>
+            <th>Fehlend</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="history-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: STATISTIKEN -->
+  <div id="tab-stats" class="tab-content">
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+        <h2 style="border:none; margin:0; padding:0;">Anwesenheits- & Teamkill-Entwicklung</h2>
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <label style="margin:0;">Format:</label>
+            <select id="stats-filter" onchange="renderStats(); renderStatsChart();" style="width:auto;">
+              <option value="all">Alle Events gesamt</option>
+              <option value="napo_all">Alle Nr59-Events</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <label style="margin:0;">Jahr:</label>
+            <select id="stats-year-filter" onchange="renderStats(); renderStatsChart();" style="width:auto;">
+              <option value="all">Alle Jahre</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Diagramm -->
+      <div class="chart-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
+      </div>
+      <div class="chart-container">
+        <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Mitglied (Nr59 / Eichenwacht)</th>
+            <th>Einheit</th>
+            <th>Erfasste Events</th>
+            <th style="color:var(--success);">Anwesend</th>
+            <th style="color:var(--warning);">Abgemeldet</th>
+            <th style="color:var(--danger);">Unentschuldigt</th>
+            <th>Anwesenheitsquote</th>
+          </tr>
+        </thead>
+        <tbody id="stats-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 5: MITGLIEDERLISTE -->
+  <div id="tab-members" class="tab-content">
+    <div class="card">
+      <h2>Neues Mitglied hinzufügen</h2>
+      <div style="display:grid; grid-template-columns: 2fr 2fr 1fr 1fr auto; gap:0.75rem; align-items:end;">
+        <div>
+          <label>Rang & Name (Nr59)</label>
+          <input type="text" id="new-member-napo">
+        </div>
+        <div>
+          <label>Rang & Name (Eichenwacht)</label>
+          <input type="text" id="new-member-bre">
+        </div>
+        <div>
+          <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; padding-bottom:0.6rem;">
+            <input type="checkbox" id="new-member-is-napo" checked> Nr59
+          </label>
+        </div>
+        <div>
+          <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; padding-bottom:0.6rem;">
+            <input type="checkbox" id="new-member-is-bre" checked> Eichenwacht
+          </label>
+        </div>
+        <div>
+          <button class="btn btn-success" onclick="addMember()">+ Hinzufügen</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Mitglieder verwalten (Reihenfolge & Permalink-Abwesenheit)</h2>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px;">Pos.</th>
+              <th style="min-width: 200px;">Rang/Name (Nr59)</th>
+              <th style="min-width: 200px;">Rang/Name (Eichenwacht)</th>
+              <th style="width: 60px;">Nr59</th>
+              <th style="width: 60px;">Eichenwacht</th>
+              <th style="width: 80px;">Perm. Abg.</th>
+              <th style="min-width: 100px;">Betroffenes Event</th>
+              <th style="min-width: 80px;">Abwesend bis</th>
+              <th style="width: 90px;">Status</th>
+              <th style="min-width: 150px;">Aktionen</th>
+            </tr>
+          </thead>
+          <tbody id="members-table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 6: TEMPLATES -->
+  <div id="tab-templates" class="tab-content">
+    <div class="card">
+      <h2 id="tpl-form-title">Neues Event-Template erstellen</h2>
+      <input type="hidden" id="edit-tpl-original-key" value="">
+      
+      <div class="grid-2" style="gap: 0.75rem;">
+        <div class="form-group">
+          <label>Interner Schlüssel (ID, z.B. mittwoch_event)</label>
+          <input type="text" id="new-tpl-key" placeholder="z.B. mittwoch_event">
+        </div>
+        <div class="form-group">
+          <label>Anzeigename im Dropdown</label>
+          <input type="text" id="new-tpl-name" placeholder="z.B. Mittwoch – Event">
+        </div>
+      </div>
+      <div class="grid-2" style="gap: 0.75rem;">
+        <div class="form-group">
+          <label>Titel-Präfix für BBCode</label>
+          <input type="text" id="new-tpl-prefix" value="k.k. Protokoll des Events am">
+        </div>
+        <div class="form-group">
+          <label>Einheit-Zuordnung</label>
+          <select id="new-tpl-unit">
+            <option value="napo">Nr59</option>
+            <option value="bre">Eichenwacht</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="gap: 0.75rem;">
+        <div class="form-group">
+          <label>Standard-Leiter / Offizier</label>
+          <input type="text" id="new-tpl-leader" value="Oberst Darthkiller">
+        </div>
+        <div class="form-group">
+          <label>Standard-Schriftführer</label>
+          <input type="text" id="new-tpl-scribe" value="Fähnrich Lorenz">
+        </div>
+      </div>
+      <div class="grid-2" style="gap: 0.75rem;">
+        <div class="form-group">
+          <label>Standard-Truppenklasse</label>
+          <input type="text" id="new-tpl-troop" value="Linieninfanterie">
+        </div>
+        <div class="form-group" style="display:flex; align-items:center; padding-top:1.5rem;">
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
+            <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
+          </label>
+        </div>
+      </div>
+      
+      <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+        <button class="btn btn-success" id="btn-save-tpl" onclick="saveTemplate()">+ Template in Cloud speichern</button>
+        <button class="btn btn-secondary" id="btn-cancel-tpl" style="display:none;" onclick="cancelEditTemplate()">Abbrechen</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Cloud-Templates verwalten</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Schlüssel</th>
+            <th>Anzeigename</th>
+            <th>Einheit</th>
+            <th>Truppenklasse</th>
+            <th>Teamkills</th>
+            <th>Standard-Leiter</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="templates-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 7: BACKUP -->
+  <div id="tab-backup" class="tab-content">
+    <div class="card">
+      <h2>Datensicherung & Export</h2>
+      <p style="color:var(--text-muted); margin-bottom:1rem;">
+        Da die Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
+      </p>
+      <div style="display:flex; gap:1rem; flex-wrap:wrap;">
+        <button class="btn" onclick="exportBackup()">⬇️ Backup herunterladen (.json)</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="toast" class="toast">Aktion erfolgreich!</div>
+
+<script>
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweeJaENqdUkTextMxAjW27aQFgurXdxtU7DW9DhAx1oVCizxlS-2KV-IiuNAo1rCo/exec";
+
+const DEFAULT_TEMPLATES = {
+  tue_hli: {
+    name: "Dienstag – HLI Linebattle",
+    titlePrefix: "k.k. Protokoll des HLI Tuesday Linebattle am Dienstag dem",
+    unit: "napo",
+    defaultLeader: "Oberst Darthkiller",
+    defaultScribe: "Fähnrich Lorenz",
+    defaultTroop: "Linieninfanterie",
+    showSubleader: true,
+    showTroop: true,
+    showPromotions: false,
+    showAwards: false,
+    trackTeamkills: true,
+    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+  },
+  fri_train: {
+    name: "Freitag – Training",
+    titlePrefix: "k.k. Trainings-Protokoll am Freitag dem",
+    unit: "napo",
+    defaultLeader: "Oberst Darthkiller",
+    defaultScribe: "Fähnrich Lorenz",
+    defaultTroop: "",
+    showSubleader: false,
+    showTroop: false,
+    showPromotions: true,
+    showAwards: true,
+    trackTeamkills: false,
+    summaryLabel: "Trainigseinheiten"
+  },
+  fri_bre: {
+    name: "Freitag – Eichenwacht Event",
+    titlePrefix: "k.k. Protokoll des Eichenwacht Friday Event am Freitag dem",
+    unit: "bre",
+    defaultLeader: "Druide Lama, Druide Darthkiller",
+    defaultScribe: "Banneret Lorenz",
+    defaultTroop: "Bogenschützen",
+    showSubleader: true,
+    showTroop: true,
+    showPromotions: false,
+    showAwards: true,
+    trackTeamkills: true,
+    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+  },
+  sun_33rd: {
+    name: "Sonntag – 33rd Linebattle",
+    titlePrefix: "k.k. Protokoll des 33rd Sunday Linebattle am Sonntag dem",
+    unit: "napo",
+    defaultLeader: "Oberst Lama",
+    defaultScribe: "Fähnrich Lorenz",
+    defaultTroop: "Linieninfanterie",
+    showSubleader: true,
+    showTroop: true,
+    showPromotions: false,
+    showAwards: false,
+    trackTeamkills: true,
+    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+  }
+};
+
+let appData = { members: [], protocols: [], teamkillLogs: [], templates: {} };
+let currentAttendance = {};
+let currentTkInputs = {};
+let isFirstLoad = true;
+
+function getTemplates() {
+  if (appData.templates && Object.keys(appData.templates).length > 0) {
+    return appData.templates;
+  }
+  return DEFAULT_TEMPLATES;
+}
+
+function setSyncStatus(state, text) {
+  const badge = document.getElementById("sync-badge");
+  if (badge) {
+    badge.className = "sync-status " + (state === "ok" ? "ok" : state === "err" ? "err" : "");
+    badge.textContent = text;
+  }
+}
+
+async function loadFromCloud(manual = false) {
+  setSyncStatus("loading", "🔄 Lade Cloud-Daten...");
+  
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+  try {
+    const response = await fetch(GOOGLE_SCRIPT_URL, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    const data = await response.json();
+
+    if (data) {
+      appData = data;
+      if (!appData.teamkillLogs) appData.teamkillLogs = [];
+      if (!appData.templates || Object.keys(appData.templates).length === 0) {
+        appData.templates = { ...DEFAULT_TEMPLATES };
+      }
+      setSyncStatus("ok", "☁️ Google Sheets verbunden");
+      if (manual) showToast("Daten erfolgreich aktualisiert!");
+    }
+  } catch (err) {
+    setSyncStatus("err", "⚠️ Offline-Modus (Cloud nicht erreichbar)");
+    const local = localStorage.getItem("kk_protocol_tool_v1");
+    if (local) {
+      try { appData = JSON.parse(local); } catch(e){}
+    }
+    if (!appData.teamkillLogs) appData.teamkillLogs = [];
+    if (!appData.templates || Object.keys(appData.templates).length === 0) {
+      appData.templates = { ...DEFAULT_TEMPLATES };
+    }
+    if (manual) showToast("Cloud nicht erreichbar. Lokale Daten aktiv.");
+  }
+
+  updateFormatDropdown();
+  updateTkFormatDropdown();
+  updateStatsFilterDropdown();
+  updateStatsYearDropdown();
+  updateHistoryBadge();
+  renderAttendanceList();
+  renderTkList();
+  renderTkHistory();
+  renderTkStats();
+  renderTkRecords();
+  renderStats();
+  renderStatsChart();
+  updateOutput();
+  
+  isFirstLoad = false;
+
+  const activeTabEl = document.querySelector(".tab-content.active");
+  if (activeTabEl) {
+    const activeTab = activeTabEl.id;
+    if (activeTab === "tab-history") renderHistory();
+    if (activeTab === "tab-stats") { renderStats(); renderStatsChart(); }
+    if (activeTab === "tab-members") renderMembers();
+    if (activeTab === "tab-templates") renderTemplatesTable();
+  }
+}
+
+async function saveToCloud() {
+  localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
+  updateHistoryBadge();
+  setSyncStatus("loading", "🔄 Speichere in Cloud...");
+
+  try {
+    await fetch(GOOGLE_SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(appData)
+    });
+    setSyncStatus("ok", "☁️ Gespeichert & Synchronisiert");
+  } catch (err) {
+    setSyncStatus("err", "⚠️ Nur lokal gespeichert");
+    showToast("Achtung: Cloud-Speichern fehlgeschlagen.");
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+function switchTab(tabId, btnElement) {
+  document.querySelectorAll(".tab-content").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll("nav button").forEach(el => el.classList.remove("active"));
+  
+  const targetTab = document.getElementById("tab-" + tabId);
+  if (targetTab) targetTab.classList.add("active");
+  if (btnElement) btnElement.classList.add("active");
+
+  if (tabId === "teamkills") {
+    updateTkFormatDropdown();
+    updateStatsFilterDropdown();
+    updateStatsYearDropdown();
+    loadExistingTkForDate();
+    renderTkHistory();
+    renderTkStats();
+    renderTkRecords();
+  }
+  if (tabId === "history") renderHistory();
+  if (tabId === "stats") {
+    updateStatsYearDropdown();
+    renderStats();
+    renderStatsChart();
+  }
+  if (tabId === "members") renderMembers();
+  if (tabId === "templates") renderTemplatesTable();
+}
+
+function initEditor() {
+  const today = new Date().toISOString().split("T")[0];
+  const dateEl = document.getElementById("proto-date");
+  const tkDateEl = document.getElementById("tk-date");
+  if (dateEl) dateEl.value = today;
+  if (tkDateEl) tkDateEl.value = today;
+
+  const day = new Date().getDay();
+  let defaultKey = "tue_hli";
+  if (day === 5) defaultKey = "fri_bre";
+  else if (day === 0) defaultKey = "sun_33rd";
+
+  const tpls = getTemplates();
+  const formatEl = document.getElementById("proto-format");
+  if (formatEl && tpls[defaultKey]) {
+    formatEl.value = defaultKey;
+  }
+
+  onFormatChange(true);
+}
+
+function updateFormatDropdown() {
+  const select = document.getElementById("proto-format");
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = "";
+  
+  const tpls = getTemplates();
+  for (const [key, cfg] of Object.entries(tpls)) {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = cfg.name;
+    select.appendChild(opt);
+  }
+  
+  if (tpls[currentVal]) {
+    select.value = currentVal;
+  }
+}
+
+function updateTkFormatDropdown() {
+  const select = document.getElementById("tk-format");
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = "";
+  
+  const tpls = getTemplates();
+  for (const [key, cfg] of Object.entries(tpls)) {
+    if (cfg.trackTeamkills !== false) {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = cfg.name;
+      select.appendChild(opt);
+    }
+  }
+  
+  if (select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  }
+}
+
+function updateStatsFilterDropdown() {
+  const selectors = [
+    document.getElementById("stats-filter"),
+    document.getElementById("tk-stats-filter")
+  ];
+
+  const tpls = getTemplates();
+
+  selectors.forEach(select => {
+    if (!select) return;
+    const currentVal = select.value;
+    select.innerHTML = `
+      <option value="all">Alle Events gesamt</option>
+      <option value="napo_all">Alle Nr59-Events</option>
+    `;
+
+    for (const [key, cfg] of Object.entries(tpls)) {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = `Nur ${cfg.name}`;
+      select.appendChild(opt);
+    }
+
+    if (select.querySelector(`option[value="${currentVal}"]`)) {
+      select.value = currentVal;
+    }
+  });
+}
+
+function updateStatsYearDropdown() {
+  const years = new Set();
+  (appData.protocols || []).forEach(p => {
+    if (p.date) {
+      const year = p.date.split("-")[0];
+      if (year) years.add(year);
+    }
+  });
+  (appData.teamkillLogs || []).forEach(t => {
+    if (t.date) {
+      const year = t.date.split("-")[0];
+      if (year) years.add(year);
+    }
+  });
+
+  const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
+
+  const selectors = [
+    document.getElementById("stats-year-filter"),
+    document.getElementById("tk-stats-year-filter")
+  ];
+
+  selectors.forEach(select => {
+    if (!select) return;
+    const currentVal = select.value;
+    select.innerHTML = `<option value="all">Alle Jahre</option>`;
+    sortedYears.forEach(y => {
+      const opt = document.createElement("option");
+      opt.value = y;
+      opt.textContent = y;
+      select.appendChild(opt);
+    });
+
+    // Beim ersten Laden immer das neuste (erste in sortierter Liste) Jahr als Standard setzen
+    if (isFirstLoad && sortedYears.length > 0) {
+      select.value = sortedYears[0];
+    } else if (select.querySelector(`option[value="${currentVal}"]`)) {
+      select.value = currentVal;
+    }
+  });
+}
+
+function onFormatChange(resetFields = true) {
+  const formatEl = document.getElementById("proto-format");
+  if (!formatEl) return;
+  const fmtKey = formatEl.value;
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey] || Object.values(tpls)[0];
+  if (!cfg) return;
+
+  const lblLeader = document.getElementById("lbl-leader");
+  const grpSubleader = document.getElementById("grp-subleader");
+  const grpTroop = document.getElementById("grp-troop");
+  const grpPromotions = document.getElementById("grp-promotions");
+  const grpAwards = document.getElementById("grp-awards");
+  const lblSummary = document.getElementById("lbl-summary");
+  const unitBadge = document.getElementById("unit-badge");
+
+  if (lblLeader) lblLeader.textContent = cfg.showPromotions ? "Trainingsleiter" : "Leitender Offizier";
+  if (grpSubleader) grpSubleader.style.display = (cfg.showSubleader !== false) ? "block" : "none";
+  if (grpTroop) grpTroop.style.display = (cfg.showTroop !== false) ? "block" : "none";
+  if (grpPromotions) grpPromotions.style.display = cfg.showPromotions ? "block" : "none";
+  if (grpAwards) grpAwards.style.display = (cfg.showPromotions || cfg.showAwards) ? "grid" : "none";
+  if (lblSummary) lblSummary.textContent = cfg.summaryLabel || "Kurzzusammenfassung des Ereignisses";
+  if (unitBadge) unitBadge.textContent = cfg.unit === "bre" ? "Eichenwacht" : "Nr59";
+
+  const editProtoId = document.getElementById("edit-protocol-id");
+  if (resetFields && editProtoId && !editProtoId.value) {
+    const leaderEl = document.getElementById("proto-leader");
+    const scribeEl = document.getElementById("proto-scribe");
+    const troopEl = document.getElementById("proto-troop");
+    if (leaderEl) leaderEl.value = cfg.defaultLeader || "";
+    if (scribeEl) scribeEl.value = cfg.defaultScribe || "";
+    if (troopEl) troopEl.value = cfg.defaultTroop || "";
+  }
+
+  if (resetFields && editProtoId && !editProtoId.value) {
+    currentAttendance = {};
+    const unit = cfg.unit;
+    (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
+      let initialStatus = "unexcused";
+      
+      if (m.permExcused && (!m.permExcusedEvent || m.permExcusedEvent === "all" || m.permExcusedEvent === fmtKey)) {
+        initialStatus = "excused";
+      }
+      currentAttendance[m.id] = { status: initialStatus, note: "" };
+    });
+  }
+
+  renderAttendanceList();
+  updateOutput();
+}
+
+function renderAttendanceList() {
+  const formatEl = document.getElementById("proto-format");
+  if (!formatEl) return;
+  const fmtKey = formatEl.value;
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey] || Object.values(tpls)[0];
+  if (!cfg) return;
+
+  const unit = cfg.unit;
+  const container = document.getElementById("attendance-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+
+  relevantMembers.forEach(m => {
+    if (!currentAttendance[m.id]) {
+      let defStatus = (m.permExcused && (!m.permExcusedEvent || m.permExcusedEvent === "all" || m.permExcusedEvent === fmtKey)) ? "excused" : "unexcused";
+      currentAttendance[m.id] = { status: defStatus, note: "" };
+    }
+    const state = currentAttendance[m.id];
+    const displayName = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+
+    const row = document.createElement("div");
+    row.className = "attendance-row";
+    
+    row.innerHTML = `
+      <div style="font-weight:600; font-size:0.9rem;">${displayName}</div>
+      <div class="radio-group">
+        <label class="radio-pill">
+          <input type="radio" name="att_${m.id}" value="present" ${state.status === 'present' ? 'checked' : ''} onchange="setMemberStatus('${m.id}', 'present')">
+          <span>Anwesend</span>
+        </label>
+        <label class="radio-pill">
+          <input type="radio" name="att_${m.id}" value="excused" ${state.status === 'excused' ? 'checked' : ''} onchange="setMemberStatus('${m.id}', 'excused')">
+          <span>Abgemeldet</span>
+        </label>
+        <label class="radio-pill">
+          <input type="radio" name="att_${m.id}" value="unexcused" ${state.status === 'unexcused' ? 'checked' : ''} onchange="setMemberStatus('${m.id}', 'unexcused')">
+          <span>Fehlend</span>
+        </label>
+      </div>
+      <div>
+        <input type="text" placeholder="Notiz z.B. ab 20:40" value="${state.note || ''}" oninput="setMemberNote('${m.id}', this.value)" style="padding:0.3rem 0.5rem; font-size:0.8rem;">
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function setMemberStatus(id, status) {
+  if (!currentAttendance[id]) currentAttendance[id] = { status: "unexcused", note: "" };
+  currentAttendance[id].status = status;
+  updateOutput();
+}
+
+function setMemberNote(id, note) {
+  if (!currentAttendance[id]) currentAttendance[id] = { status: "unexcused", note: "" };
+  currentAttendance[id].note = note;
+  updateOutput();
+}
+
+// ==========================================
+// TEAMKILLS TAB LOGIK & STATISTIK
+// ==========================================
+function onTkFormatChange() {
+  loadExistingTkForDate();
+}
+
+function onTkYearFilterChange() {
+  renderTkStats();
+  renderTkRecords();
+}
+
+function loadExistingTkForDate() {
+  const tkFormatEl = document.getElementById("tk-format");
+  const tkDateEl = document.getElementById("tk-date");
+  if (!tkFormatEl || !tkDateEl) return;
+
+  const fmt = tkFormatEl.value;
+  const date = tkDateEl.value;
+  
+  const existing = (appData.teamkillLogs || []).find(t => t.format === fmt && t.date === date);
+  const editTkIdEl = document.getElementById("edit-tk-id");
+  
+  if (existing) {
+    if (editTkIdEl) editTkIdEl.value = existing.id;
+    currentTkInputs = JSON.parse(JSON.stringify(existing.records || {}));
+  } else {
+    if (editTkIdEl) editTkIdEl.value = "";
+    currentTkInputs = {};
+  }
+  renderTkList();
+}
+
+function renderTkList() {
+  const tkFormatEl = document.getElementById("tk-format");
+  if (!tkFormatEl) return;
+  const fmtKey = tkFormatEl.value;
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey] || Object.values(tpls)[0];
+  const container = document.getElementById("tk-member-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (!cfg) {
+    container.innerHTML = `<p style="color:var(--text-muted);">Keine Events mit Teamkill-Erfassung gefunden.</p>`;
+    return;
+  }
+
+  const unit = cfg.unit;
+  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+
+  relevantMembers.forEach(m => {
+    if (!currentTkInputs[m.id]) {
+      currentTkInputs[m.id] = { count: 0 };
+    }
+    const val = currentTkInputs[m.id];
+    const displayName = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+
+    const row = document.createElement("div");
+    row.className = "tk-row";
+    row.innerHTML = `
+      <div style="font-weight:600; font-size:0.9rem;">${displayName}</div>
+      <div>
+        <input type="number" min="0" value="${val.count || 0}" oninput="setTkCount('${m.id}', this.value)" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;" placeholder="0">
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function setTkCount(id, val) {
+  if (!currentTkInputs[id]) currentTkInputs[id] = { count: 0 };
+  currentTkInputs[id].count = parseInt(val) || 0;
+}
+
+async function saveTeamkillLog() {
+  const tkFormatEl = document.getElementById("tk-format");
+  const tkDateEl = document.getElementById("tk-date");
+  const editTkIdEl = document.getElementById("edit-tk-id");
+  if (!tkFormatEl || !tkDateEl) return;
+
+  const fmt = tkFormatEl.value;
+  const date = tkDateEl.value;
+  const editId = editTkIdEl ? editTkIdEl.value : "";
+
+  if (!fmt || !date) {
+    alert("Bitte Event-Format und Datum wählen.");
+    return;
+  }
+
+  const cleanRecords = {};
+  for (const [mId, data] of Object.entries(currentTkInputs)) {
+    if (data.count > 0) {
+      cleanRecords[mId] = { count: data.count };
+    }
+  }
+
+  if (!appData.teamkillLogs) appData.teamkillLogs = [];
+
+  const existingIdx = appData.teamkillLogs.findIndex(t => t.id === editId || (t.format === fmt && t.date === date));
+
+  const logObj = {
+    id: (existingIdx !== -1) ? appData.teamkillLogs[existingIdx].id : ("tk_" + Date.now()),
+    format: fmt,
+    date: date,
+    records: cleanRecords
+  };
+
+  if (existingIdx !== -1) {
+    appData.teamkillLogs[existingIdx] = logObj;
+  } else {
+    appData.teamkillLogs.unshift(logObj);
+  }
+
+  appData.teamkillLogs.sort((a, b) => b.date.localeCompare(a.date));
+  if (editTkIdEl) editTkIdEl.value = logObj.id;
+
+  await saveToCloud();
+  renderTkHistory();
+  renderTkStats();
+  renderTkRecords();
+  updateStatsYearDropdown();
+  showToast("Teamkills gespeichert & synchronisiert!");
+}
+
+function renderTkHistory() {
+  const tbody = document.getElementById("tk-history-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!appData.teamkillLogs || appData.teamkillLogs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Noch keine Teamkills erfasst.</td></tr>`;
+    return;
+  }
+
+  const tpls = getTemplates();
+  appData.teamkillLogs.forEach(log => {
+    const cfg = tpls[log.format];
+    let sumTK = 0;
+    if (log.records) {
+      Object.values(log.records).forEach(r => sumTK += (parseInt(r.count) || 0));
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${formatGermanDate(log.date)}</strong></td>
+      <td>${cfg ? cfg.name : log.format}</td>
+      <td style="color:var(--danger); font-weight:700;">${sumTK}</td>
+      <td style="display:flex; gap:0.4rem;">
+        <button class="btn btn-sm" onclick="editTkLog('${log.id}')">✏️ Laden</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTkLog('${log.id}')">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderTkRecords() {
+  const yearFilterEl = document.getElementById("tk-stats-year-filter");
+  const selectedYear = yearFilterEl ? yearFilterEl.value : "all";
+
+  const titleEl = document.getElementById("record-year-title");
+  if (titleEl) titleEl.textContent = selectedYear === "all" ? "Gesamt" : selectedYear;
+
+  const avgValEl = document.getElementById("record-avg-val");
+  const avgDetailsEl = document.getElementById("record-avg-details");
+  const regValEl = document.getElementById("record-reg-val");
+  const regDetailsEl = document.getElementById("record-reg-details");
+  const playerValEl = document.getElementById("record-player-val");
+  const playerDetailsEl = document.getElementById("record-player-details");
+
+  const logs = (appData.teamkillLogs || []).filter(l => {
+    if (selectedYear === "all") return true;
+    return l.date && l.date.split("-")[0] === selectedYear;
+  });
+
+  const tpls = getTemplates();
+  const membersMap = {};
+  (appData.members || []).forEach(m => membersMap[m.id] = m);
+
+  let totalRegimentTK = 0;
+  let maxEventTK = -1;
+  let bestEventLog = null;
+
+  let maxPlayerTK = -1;
+  let bestPlayerName = "-";
+  let bestPlayerEventName = "-";
+  let bestPlayerDate = "-";
+
+  logs.forEach(log => {
+    let eventSum = 0;
+    if (log.records) {
+      for (const [mId, rec] of Object.entries(log.records)) {
+        const c = parseInt(rec.count) || 0;
+        eventSum += c;
+        totalRegimentTK += c;
+
+        if (c > maxPlayerTK) {
+          maxPlayerTK = c;
+          if (membersMap[mId]) {
+            bestPlayerName = [membersMap[mId].napoName, membersMap[mId].breName].filter(Boolean).join(" / ");
+          } else {
+            bestPlayerName = "Unbekannt";
+          }
+          const cfg = tpls[log.format];
+          bestPlayerEventName = cfg ? cfg.name : log.format;
+          bestPlayerDate = formatGermanDate(log.date);
+        }
+      }
+    }
+
+    if (eventSum > maxEventTK) {
+      maxEventTK = eventSum;
+      bestEventLog = log;
+    }
+  });
+
+  // 1. Regiments-Durchschnitt pro Event
+  if (logs.length > 0) {
+    const avg = (totalRegimentTK / logs.length).toFixed(2);
+    avgValEl.textContent = `${avg} TKs`;
+    avgDetailsEl.textContent = `Über ${logs.length} erfasste Events`;
+  } else {
+    avgValEl.textContent = "0.0 TKs";
+    avgDetailsEl.textContent = "Keine Daten";
+  }
+
+  // 2. Regiments-Rekord (Gesamte TKs in einem Event)
+  if (bestEventLog && maxEventTK > 0) {
+    const cfg = tpls[bestEventLog.format];
+    const eventName = cfg ? cfg.name : bestEventLog.format;
+    regValEl.textContent = `${maxEventTK} TKs`;
+    regDetailsEl.innerHTML = `<strong>${eventName}</strong><br>${formatGermanDate(bestEventLog.date)}`;
+  } else {
+    regValEl.textContent = "0 TKs";
+    regDetailsEl.textContent = "Keine Daten";
+  }
+
+  // 3. Einzelspieler-Rekord (Höchster Wert eines Spielers in einem Event)
+  if (maxPlayerTK > 0) {
+    playerValEl.textContent = `${maxPlayerTK} TKs`;
+    playerDetailsEl.innerHTML = `<strong>${bestPlayerName}</strong><br>${bestPlayerEventName} (${bestPlayerDate})`;
+  } else {
+    playerValEl.textContent = "0 TKs";
+    playerDetailsEl.textContent = "Keine Daten";
+  }
+}
+
+function renderTkStats() {
+  const tkStatsFilterEl = document.getElementById("tk-stats-filter");
+  const tkStatsYearFilterEl = document.getElementById("tk-stats-year-filter");
+  const tbody = document.getElementById("tk-stats-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const filter = tkStatsFilterEl ? tkStatsFilterEl.value : "all";
+  const yearFilter = tkStatsYearFilterEl ? tkStatsYearFilterEl.value : "all";
+
+  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+  const filteredTkLogs = (appData.teamkillLogs || []).filter(t => matchesStatsFilters(t, filter, yearFilter));
+
+  const memberStats = [];
+
+  (appData.members || []).forEach(m => {
+    let total = 0, pres = 0, totalTK = 0;
+
+    filteredProtocols.forEach(p => {
+      if (p.attendance && p.attendance[m.id]) {
+        total++;
+        if (p.attendance[m.id].status === "present") pres++;
+        if (p.attendance[m.id].teamkills) {
+          totalTK += (parseInt(p.attendance[m.id].teamkills) || 0);
+        }
+      }
+    });
+
+    filteredTkLogs.forEach(log => {
+      if (log.records && log.records[m.id]) {
+        totalTK += (parseInt(log.records[m.id].count) || 0);
+      }
+    });
+
+    if (total === 0 && totalTK === 0 && !m.active) return;
+
+    const tkPerEvent = pres > 0 ? (totalTK / pres).toFixed(2) : (total > 0 ? (totalTK / total).toFixed(2) : "0.00");
+    memberStats.push({ member: m, pres, totalTK, tkPerEvent });
+  });
+
+  memberStats.sort((a, b) => b.totalTK - a.totalTK);
+
+  memberStats.forEach(item => {
+    const m = item.member;
+    const nameLabel = [m.napoName, m.breName].filter(Boolean).join(" / ");
+    
+    let unitBadges = "";
+    if (m.inNapo) unitBadges += `<span class="badge badge-napo">Nr59</span> `;
+    if (m.inBre) unitBadges += `<span class="badge badge-bre">Eichenwacht</span> `;
+    if (!m.active) unitBadges += `<span class="badge badge-inactive">Inaktiv</span>`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${nameLabel}</strong></td>
+      <td>${unitBadges}</td>
+      <td style="color:var(--danger); font-weight:700;">${item.totalTK}</td>
+      <td style="color:var(--success);">${item.pres}</td>
+      <td style="color:var(--danger);">${item.tkPerEvent}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function editTkLog(id) {
+  const log = (appData.teamkillLogs || []).find(t => t.id === id);
+  if (!log) return;
+
+  const tkFormatEl = document.getElementById("tk-format");
+  const tkDateEl = document.getElementById("tk-date");
+  const editTkIdEl = document.getElementById("edit-tk-id");
+
+  if (tkFormatEl) tkFormatEl.value = log.format;
+  if (tkDateEl) tkDateEl.value = log.date;
+  if (editTkIdEl) editTkIdEl.value = log.id;
+  currentTkInputs = JSON.parse(JSON.stringify(log.records || {}));
+  renderTkList();
+  showToast("Teamkill-Eintrag geladen.");
+}
+
+async function deleteTkLog(id) {
+  if (!confirm("Diesen Teamkill-Eintrag wirklich löschen?")) return;
+  appData.teamkillLogs = (appData.teamkillLogs || []).filter(t => t.id !== id);
+  await saveToCloud();
+  renderTkHistory();
+  renderTkStats();
+  renderTkRecords();
+  loadExistingTkForDate();
+  showToast("Eintrag gelöscht.");
+}
+
+// ==========================================
+// PROTOKOLL GENERIERUNG
+// ==========================================
+function formatGermanDate(isoDate) {
+  if (!isoDate) return "TT.MM.JJJJ";
+  const parts = isoDate.split("-");
+  return `${parts[2]}.${parts[1]}.${parts[0]}`;
+}
+
+function generateBBCode() {
+  const formatEl = document.getElementById("proto-format");
+  if (!formatEl) return "";
+  const fmtKey = formatEl.value;
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey] || Object.values(tpls)[0];
+  if (!cfg) return "";
+
+  const unit = cfg.unit;
+  const dateStr = formatGermanDate(document.getElementById("proto-date").value);
+
+  const leader = document.getElementById("proto-leader").value;
+  const subleader = document.getElementById("proto-subleader") ? document.getElementById("proto-subleader").value : "/";
+  const scribe = document.getElementById("proto-scribe").value;
+  const troop = document.getElementById("proto-troop") ? document.getElementById("proto-troop").value : "";
+  const promotions = document.getElementById("proto-promotions") ? document.getElementById("proto-promotions").value : "/";
+  const awards = document.getElementById("proto-awards") ? document.getElementById("proto-awards").value : "/";
+  const mercs = document.getElementById("proto-mercs") ? document.getElementById("proto-mercs").value : "/";
+  const summary = document.getElementById("proto-summary") ? document.getElementById("proto-summary").value : "";
+  const pos = document.getElementById("proto-pos") ? document.getElementById("proto-pos").value : "";
+  const neg = document.getElementById("proto-neg") ? document.getElementById("proto-neg").value : "";
+  const notes = document.getElementById("proto-notes") ? document.getElementById("proto-notes").value : "";
+
+  const presentList = [];
+  const excusedList = [];
+  const unexcusedList = [];
+
+  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+  relevantMembers.forEach(m => {
+    const state = currentAttendance[m.id] || { status: "unexcused", note: "" };
+    const name = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+    
+    let cleanNote = (state.note || "").trim();
+    if (cleanNote) {
+      if (!cleanNote.startsWith("(")) cleanNote = "(" + cleanNote;
+      if (!cleanNote.endsWith(")")) cleanNote = cleanNote + ")";
+    }
+
+    const fullLine = cleanNote ? `${name} ${cleanNote}` : name;
+
+    if (state.status === "present") presentList.push(fullLine);
+    else if (state.status === "excused") excusedList.push(fullLine);
+    else unexcusedList.push(fullLine);
+  });
+
+  let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]\n\n`;
+
+  if (cfg.showPromotions) {
+    bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
+    bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
+    bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
+    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+  } else {
+    bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
+    if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
+    bb += `[u]Schriftführer:[/u] ${scribe}\n`;
+    if (cfg.showTroop !== false) bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
+    else bb += `\n`;
+    if (cfg.showAwards) {
+      bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+    }
+  }
+
+  bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
+  bb += (presentList.length ? presentList.join("\n") : "/") + "\n\n";
+  bb += `[b][i]In Summe:[/i][/b] ${presentList.length}\n\n`;
+
+  bb += `[size=90][b][color=#804000]Entsatzspieler des Heeres, Landwehrmänner & Milizen:[/color][/b][/size]\n`;
+  bb += `${mercs}\n\n`;
+
+  bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/b][/size]\n`;
+  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\n";
+  bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
+
+  bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/b][/size]\n`;
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
+
+  bb += `[b]${cfg.summaryLabel || "Kurzzusammenfassung des Ereignisses"}:[/b] ${summary}\n\n`;
+  bb += `[color=#408000]Positiv hervorzuheben[/color]: ${pos}\n`;
+  bb += `[color=#BF0040]Negativ hervorzuheben[/color]: ${neg}\n\n`;
+  bb += `[i]Anmerkungen:[/i] ${notes}`;
+
+  return bb;
+}
+
+function parseBBCodeToHTML(bb) {
+  let html = bb
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\[b\]([\s\S]*?)\[\/b\]/gi, "<strong>$1</strong>")
+    .replace(/\[i\]([\s\S]*?)\[\/i\]/gi, "<em>$1</em>")
+    .replace(/\[u\]([\s\S]*?)\[\/u\]/gi, "<u>$1</u>")
+    .replace(/\[color=(#[0-9a-fA-F]{3,6}|[a-zA-Z]+)\]([\s\S]*?)\[\/color\]/gi, '<span style="color:$1">$2</span>')
+    .replace(/\[size=(\d+)\]([\s\S]*?)\[\/size\]/gi, (match, size, text) => {
+      const pct = parseInt(size, 10);
+      return `<span style="font-size:${pct}%">${text}</span>`;
+    });
+  return html;
+}
+
+function updateOutput() {
+  const bbcodeOutputEl = document.getElementById("bbcode-output");
+  const htmlPreviewEl = document.getElementById("html-preview");
+  if (!bbcodeOutputEl || !htmlPreviewEl) return;
+
+  const bb = generateBBCode();
+  bbcodeOutputEl.value = bb;
+  htmlPreviewEl.innerHTML = parseBBCodeToHTML(bb);
+}
+
+function copyBBCode() {
+  const copyText = document.getElementById("bbcode-output");
+  if (!copyText) return;
+  copyText.select();
+  navigator.clipboard.writeText(copyText.value);
+  showToast("BBCode in die Zwischenablage kopiert!");
+}
+
+async function saveProtocol() {
+  const formatEl = document.getElementById("proto-format");
+  if (!formatEl) return;
+  const fmtKey = formatEl.value;
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey];
+  const unit = cfg ? cfg.unit : "napo";
+  const editProtoIdEl = document.getElementById("edit-protocol-id");
+  const editId = editProtoIdEl ? editProtoIdEl.value : "";
+
+  const attendanceSnapshot = {};
+  (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
+    attendanceSnapshot[m.id] = currentAttendance[m.id] ? { ...currentAttendance[m.id] } : { status: "unexcused", note: "" };
+  });
+
+  const protocolObj = {
+    id: editId || "proto_" + Date.now(),
+    format: fmtKey,
+    date: document.getElementById("proto-date").value,
+    leader: document.getElementById("proto-leader").value,
+    subleader: document.getElementById("proto-subleader").value,
+    scribe: document.getElementById("proto-scribe").value,
+    troop: document.getElementById("proto-troop").value,
+    promotions: document.getElementById("proto-promotions").value,
+    awards: document.getElementById("proto-awards").value,
+    mercs: document.getElementById("proto-mercs").value,
+    summary: document.getElementById("proto-summary").value,
+    pos: document.getElementById("proto-pos").value,
+    neg: document.getElementById("proto-neg").value,
+    notes: document.getElementById("proto-notes").value,
+    attendance: attendanceSnapshot,
+    bbcode: generateBBCode()
+  };
+
+  if (!appData.protocols) appData.protocols = [];
+
+  if (editId) {
+    const idx = appData.protocols.findIndex(p => p.id === editId);
+    if (idx !== -1) appData.protocols[idx] = protocolObj;
+    if (editProtoIdEl) editProtoIdEl.value = "";
+  } else {
+    appData.protocols.unshift(protocolObj);
+  }
+
+  appData.protocols.sort((a, b) => b.date.localeCompare(a.date));
+
+  await saveToCloud();
+  updateStatsYearDropdown();
+  showToast("Protokoll gespeichert & in Google Sheets synchronisiert!");
+}
+
+function updateHistoryBadge() {
+  const badge = document.getElementById("nav-history-count");
+  if (badge) badge.textContent = (appData.protocols || []).length;
+}
+
+function renderHistory() {
+  const tbody = document.getElementById("history-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  if (!appData.protocols || appData.protocols.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Noch keine Protokolle gespeichert.</td></tr>`;
+    return;
+  }
+
+  const tpls = getTemplates();
+  appData.protocols.forEach(p => {
+    const cfg = tpls[p.format];
+    let pres = 0, exc = 0, unexc = 0;
+    if (p.attendance) {
+      Object.values(p.attendance).forEach(a => {
+        if (a.status === "present") pres++;
+        else if (a.status === "excused") exc++;
+        else unexc++;
+      });
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${formatGermanDate(p.date)}</strong></td>
+      <td>${cfg ? cfg.name : p.format}</td>
+      <td style="color:var(--success); font-weight:600;">${pres}</td>
+      <td style="color:var(--warning);">${exc}</td>
+      <td style="color:var(--danger);">${unexc}</td>
+      <td style="display:flex; gap:0.4rem;">
+        <button class="btn btn-sm btn-secondary" onclick="copySavedBBCode('${p.id}')">📋 BBCode</button>
+        <button class="btn btn-sm" onclick="editProtocol('${p.id}')">✏️ Bearbeiten</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteProtocol('${p.id}')">🗑️</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function copySavedBBCode(id) {
+  const p = (appData.protocols || []).find(x => x.id === id);
+  if (p) {
+    navigator.clipboard.writeText(p.bbcode);
+    showToast("BBCode aus Verlauf kopiert!");
+  }
+}
+
+function editProtocol(id) {
+  const p = (appData.protocols || []).find(x => x.id === id);
+  if (!p) return;
+
+  const editProtoIdEl = document.getElementById("edit-protocol-id");
+  if (editProtoIdEl) editProtoIdEl.value = p.id;
+  document.getElementById("proto-format").value = p.format;
+  document.getElementById("proto-date").value = p.date;
+  document.getElementById("proto-leader").value = p.leader;
+  document.getElementById("proto-subleader").value = p.subleader || "/";
+  document.getElementById("proto-scribe").value = p.scribe;
+  document.getElementById("proto-troop").value = p.troop || "";
+  document.getElementById("proto-promotions").value = p.promotions || "/";
+  document.getElementById("proto-awards").value = p.awards || "/";
+  document.getElementById("proto-mercs").value = p.mercs || "/";
+  document.getElementById("proto-summary").value = p.summary;
+  document.getElementById("proto-pos").value = p.pos;
+  document.getElementById("proto-neg").value = p.neg;
+  document.getElementById("proto-notes").value = p.notes;
+
+  currentAttendance = JSON.parse(JSON.stringify(p.attendance || {}));
+  onFormatChange(false);
+
+  switchTab('editor', document.querySelector("nav button"));
+  showToast("Protokoll zum Bearbeiten geladen.");
+}
+
+async function deleteProtocol(id) {
+  if (!confirm("Dieses Protokoll wirklich löschen?")) return;
+  appData.protocols = (appData.protocols || []).filter(p => p.id !== id);
+  await saveToCloud();
+  updateStatsYearDropdown();
+  renderHistory();
+  showToast("Protokoll gelöscht.");
+}
+
+// ==========================================
+// STATISTIKEN & DIAGRAMM
+// ==========================================
+function matchesStatsFilters(item, filter, yearFilter) {
+  let matchesEvent = true;
+  if (filter === "napo_all") {
+    const tpls = getTemplates();
+    matchesEvent = tpls[item.format] && tpls[item.format].unit === "napo";
+  } else if (filter !== "all") {
+    matchesEvent = (item.format === filter);
+  }
+
+  let matchesYear = true;
+  if (yearFilter !== "all" && item.date) {
+    const itemYear = item.date.split("-")[0];
+    matchesYear = (itemYear === yearFilter);
+  }
+
+  return matchesEvent && matchesYear;
+}
+
+function renderStats() {
+  const statsFilterEl = document.getElementById("stats-filter");
+  const statsYearFilterEl = document.getElementById("stats-year-filter");
+  const tbody = document.getElementById("stats-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const filter = statsFilterEl ? statsFilterEl.value : "all";
+  const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
+
+  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+
+  (appData.members || []).forEach(m => {
+    let total = 0, pres = 0, exc = 0, unexc = 0;
+
+    filteredProtocols.forEach(p => {
+      if (p.attendance && p.attendance[m.id]) {
+        total++;
+        const st = p.attendance[m.id].status;
+        if (st === "present") pres++;
+        else if (st === "excused") exc++;
+        else unexc++;
+      }
+    });
+
+    if (total === 0 && !m.active) return;
+    
+    const rate = total > 0 ? Math.round((pres / total) * 100) : 0;
+    const nameLabel = [m.napoName, m.breName].filter(Boolean).join(" / ");
+    
+    let unitBadges = "";
+    if (m.inNapo) unitBadges += `<span class="badge badge-napo">Nr59</span> `;
+    if (m.inBre) unitBadges += `<span class="badge badge-bre">Eichenwacht</span> `;
+    if (!m.active) unitBadges += `<span class="badge badge-inactive">Inaktiv</span>`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${nameLabel}</strong></td>
+      <td>${unitBadges}</td>
+      <td>${total}</td>
+      <td style="color:var(--success); font-weight:700;">${pres}</td>
+      <td style="color:var(--warning);">${exc}</td>
+      <td style="color:var(--danger);">${unexc}</td>
+      <td>
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+          <div style="flex:1; background:var(--bg); height:8px; border-radius:4px; overflow:hidden; max-width:100px;">
+            <div style="width:${rate}%; background:${rate >= 70 ? 'var(--success)' : rate >= 40 ? 'var(--warning)' : 'var(--danger)'}; height:100%;"></div>
+          </div>
+          <span>${total > 0 ? rate + '%' : '-'}</span>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderStatsChart() {
+  const canvas = document.getElementById("attendance-chart");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  
+  // High-DPI Fix für gestochen scharfe Linien
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+
+  ctx.clearRect(0, 0, rect.width, rect.height);
+
+  const statsFilterEl = document.getElementById("stats-filter");
+  const statsYearFilterEl = document.getElementById("stats-year-filter");
+  const filter = statsFilterEl ? statsFilterEl.value : "all";
+  const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
+
+  // Protokolle chronologisch sortieren (von alt nach neu für den Verlauf)
+  const protocols = [...(appData.protocols || [])]
+    .filter(p => matchesStatsFilters(p, filter, yearFilter))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  // Teamkill-Logs nach Datum zuordnen
+  const tkMap = {};
+  (appData.teamkillLogs || []).forEach(t => {
+    if (matchesStatsFilters(t, filter, yearFilter)) {
+      let sumTK = 0;
+      if (t.records) {
+        Object.values(t.records).forEach(r => sumTK += (parseInt(r.count) || 0));
+      }
+      tkMap[t.date] = sumTK;
+    }
+  });
+
+  if (protocols.length === 0) {
+    ctx.fillStyle = "#9ba1a6";
+    ctx.font = "13px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Keine Daten im gewählten Zeitraum vorhanden", rect.width / 2, rect.height / 2);
+    return;
+  }
+
+  // Datenpunkte vorbereiten
+  const dataPoints = protocols.map(p => {
+    let pres = 0, exc = 0, unexc = 0;
+    if (p.attendance) {
+      Object.values(p.attendance).forEach(a => {
+        if (a.status === "present") pres++;
+        else if (a.status === "excused") exc++;
+        else unexc++;
+      });
+    }
+    const tk = tkMap[p.date] || 0;
+    return { date: formatGermanDate(p.date), pres, exc, unexc, tk };
+  });
+
+  // Maximalwert für Skalierung finden
+  let maxVal = 5;
+  dataPoints.forEach(d => {
+    const m = Math.max(d.pres, d.exc, d.unexc, d.tk);
+    if (m > maxVal) maxVal = m;
+  });
+
+  const paddingLeft = 35;
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 30;
+  const chartWidth = rect.width - paddingLeft - paddingRight;
+  const chartHeight = rect.height - paddingTop - paddingBottom;
+
+  // Hintergrund-Linien & Achsen
+  ctx.strokeStyle = "rgba(46, 51, 59, 0.6)";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = paddingTop + (chartHeight / 4) * i;
+    ctx.beginPath();
+    ctx.moveTo(paddingLeft, y);
+    ctx.lineTo(rect.width - paddingRight, y);
+    ctx.stroke();
+
+    const valLabel = Math.round(maxVal - (maxVal / 4) * i);
+    ctx.fillStyle = "#9ba1a6";
+    ctx.font = "10px sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(valLabel, paddingLeft - 8, y + 3);
+  }
+
+  const barGroupWidth = chartWidth / dataPoints.length;
+  const barWidth = Math.max(2, Math.min(6, (barGroupWidth / 5) - 1)); // Sehr dünne Balken
+
+  dataPoints.forEach((d, idx) => {
+    const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
+    
+    // X-Achsen Beschriftung (Datum, bei vielen Punkten gedimmt oder gekürzt)
+    if (dataPoints.length <= 15 || idx % Math.ceil(dataPoints.length / 12) === 0) {
+      ctx.fillStyle = "#9ba1a6";
+      ctx.font = "9px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(d.date.substring(0, 5), groupX, rect.height - 10);
+    }
+
+    const values = [
+      { val: d.pres, color: "#10b981" },
+      { val: d.exc, color: "#f59e0b" },
+      { val: d.unexc, color: "#ef4444" },
+      { val: d.tk, color: "#a855f7" }
+    ];
+
+    const totalGroupW = values.length * (barWidth + 2);
+    let startX = groupX - (totalGroupW / 2);
+
+    values.forEach((v, vIdx) => {
+      const h = (v.val / maxVal) * chartHeight;
+      const x = startX + vIdx * (barWidth + 2);
+      const y = paddingTop + chartHeight - h;
+
+      ctx.fillStyle = v.color;
+      ctx.fillRect(x, y, barWidth, h);
+    });
+  });
+}
+
+// ==========================================
+// MITGLIEDERLISTE
+// ==========================================
+function renderMembers() {
+  const tbody = document.getElementById("members-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+
+  const tpls = getTemplates();
+
+  (appData.members || []).forEach((m, index) => {
+    let eventOptions = `<option value="all">Alle Events</option>`;
+    for (const [key, cfg] of Object.entries(tpls)) {
+      const selected = (m.permExcusedEvent === key) ? "selected" : "";
+      eventOptions += `<option value="${key}" ${selected}>${cfg.name}</option>`;
+    }
+
+    const tr = document.createElement("tr");
+    tr.style.opacity = m.active ? "1" : "0.55";
+    tr.innerHTML = `
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sm btn-secondary" onclick="moveMember(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⬆️</button>
+        <button class="btn btn-sm btn-secondary" onclick="moveMember(${index}, 1)" ${index === appData.members.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⬇️</button>
+      </td>
+      <td><input type="text" value="${m.napoName}" onchange="updateMember('${m.id}', 'napoName', this.value)" style="padding:0.4rem 0.6rem; width:100%;"></td>
+      <td><input type="text" value="${m.breName}" onchange="updateMember('${m.id}', 'breName', this.value)" style="padding:0.4rem 0.6rem; width:100%;"></td>
+      <td><input type="checkbox" ${m.inNapo ? 'checked' : ''} onchange="updateMember('${m.id}', 'inNapo', this.checked)"></td>
+      <td><input type="checkbox" ${m.inBre ? 'checked' : ''} onchange="updateMember('${m.id}', 'inBre', this.checked)"></td>
+      <td><input type="checkbox" ${m.permExcused ? 'checked' : ''} onchange="updateMember('${m.id}', 'permExcused', this.checked)"></td>
+      <td>
+        <select onchange="updateMember('${m.id}', 'permExcusedEvent', this.value)" style="padding:0.3rem; font-size:0.85rem; width:100%;">
+          ${eventOptions}
+        </select>
+      </td>
+      <td><input type="text" value="${m.permExcusedUntil || ''}" onchange="updateMember('${m.id}', 'permExcusedUntil', this.value)" style="padding:0.35rem; font-size:0.85rem; width:100%;"></td>
+      <td>
+        <span class="badge ${m.active ? 'badge-napo' : 'badge-inactive'}">${m.active ? 'Aktiv' : 'Archiviert'}</span>
+      </td>
+      <td style="display:flex; gap:0.4rem;">
+        <button class="btn btn-sm btn-secondary" onclick="toggleMemberActive('${m.id}')">
+          ${m.active ? 'Archivieren' : 'Reaktivieren'}
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMember('${m.id}')">🗑️ Löschen</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function moveMember(index, direction) {
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= appData.members.length) return;
+
+  const members = appData.members;
+  const temp = members[index];
+  members[index] = members[newIndex];
+  members[newIndex] = temp;
+
+  renderMembers();
+  renderAttendanceList();
+  renderTkList();
+  renderTkStats();
+  renderStats();
+  renderStatsChart();
+  updateOutput();
+  await saveToCloud();
+  showToast("Reihenfolge aktualisiert & synchronisiert.");
+}
+
+async function addMember() {
+  const napo = document.getElementById("new-member-napo").value.trim();
+  const bre = document.getElementById("new-member-bre").value.trim();
+  const inNapo = document.getElementById("new-member-is-napo").checked;
+  const inBre = document.getElementById("new-member-is-bre").checked;
+
+  if (!napo && !bre) {
+    alert("Bitte mindestens einen Namen eingeben.");
+    return;
+  }
+
+  if (!appData.members) appData.members = [];
+
+  appData.members.push({
+    id: "m_" + Date.now(),
+    napoName: napo,
+    breName: bre,
+    inNapo: inNapo,
+    inBre: inBre,
+    permExcused: false,
+    permExcusedEvent: "all",
+    permExcusedUntil: "",
+    active: true
+  });
+
+  document.getElementById("new-member-napo").value = "";
+  document.getElementById("new-member-bre").value = "";
+
+  renderMembers();
+  renderAttendanceList();
+  renderTkList();
+  renderTkStats();
+  updateOutput();
+  await saveToCloud();
+  showToast("Mitglied hinzugefügt & synchronisiert!");
+}
+
+async function updateMember(id, field, value) {
+  const m = (appData.members || []).find(x => x.id === id);
+  if (m) {
+    m[field] = value;
+    renderAttendanceList();
+    renderTkList();
+    renderTkStats();
+    updateOutput();
+    await saveToCloud();
+    showToast("Mitglied aktualisiert.");
+  }
+}
+
+async function toggleMemberActive(id) {
+  const m = (appData.members || []).find(x => x.id === id);
+  if (m) {
+    m.active = !m.active;
+    renderMembers();
+    renderAttendanceList();
+    renderTkList();
+    renderTkStats();
+    updateOutput();
+    await saveToCloud();
+  }
+}
+
+async function deleteMember(id) {
+  const m = (appData.members || []).find(x => x.id === id);
+  const name = m ? (m.napoName || m.breName || "Dieses Mitglied") : "Dieses Mitglied";
+  
+  if (!confirm(`Möchtest du '${name}' wirklich unwiderruflich löschen?`)) return;
+
+  appData.members = (appData.members || []).filter(x => x.id !== id);
+  
+  renderMembers();
+  renderAttendanceList();
+  renderTkList();
+  renderTkStats();
+  renderStats();
+  renderStatsChart();
+  updateOutput();
+  await saveToCloud();
+  showToast("Mitglied gelöscht & synchronisiert.");
+}
+
+// ==========================================
+// TEMPLATES
+// ==========================================
+async function saveTemplate() {
+  const originalKey = document.getElementById("edit-tpl-original-key").value.trim();
+  const key = document.getElementById("new-tpl-key").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+  const name = document.getElementById("new-tpl-name").value.trim();
+  const prefix = document.getElementById("new-tpl-prefix").value.trim();
+  const unit = document.getElementById("new-tpl-unit").value;
+  const leader = document.getElementById("new-tpl-leader").value.trim();
+  const scribe = document.getElementById("new-tpl-scribe").value.trim();
+  const troop = document.getElementById("new-tpl-troop").value.trim();
+  const trackTK = document.getElementById("new-tpl-track-tk").checked;
+
+  if (!key || !name) {
+    alert("Bitte einen gültigen Schlüssel (ID) und Namen angeben.");
+    return;
+  }
+
+  if (!appData.templates) {
+    appData.templates = { ...DEFAULT_TEMPLATES };
+  }
+
+  if (originalKey && originalKey !== key) {
+    delete appData.templates[originalKey];
+  }
+
+  appData.templates[key] = {
+    name: name,
+    titlePrefix: prefix,
+    unit: unit,
+    defaultLeader: leader,
+    defaultScribe: scribe,
+    defaultTroop: troop,
+    showSubleader: true,
+    showTroop: true,
+    showPromotions: false,
+    showAwards: false,
+    trackTeamkills: trackTK,
+    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+  };
+
+  cancelEditTemplate();
+  updateFormatDropdown();
+  updateTkFormatDropdown();
+  updateStatsFilterDropdown();
+  renderTemplatesTable();
+  onFormatChange();
+  await saveToCloud();
+  showToast("Template in Cloud gespeichert!");
+}
+
+function editTemplate(key) {
+  const tpls = getTemplates();
+  const cfg = tpls[key];
+  if (!cfg) return;
+
+  document.getElementById("edit-tpl-original-key").value = key;
+  document.getElementById("new-tpl-key").value = key;
+  document.getElementById("new-tpl-name").value = cfg.name;
+  document.getElementById("new-tpl-prefix").value = cfg.titlePrefix;
+  document.getElementById("new-tpl-unit").value = cfg.unit;
+  document.getElementById("new-tpl-leader").value = cfg.defaultLeader || "";
+  document.getElementById("new-tpl-scribe").value = cfg.defaultScribe || "";
+  document.getElementById("new-tpl-troop").value = cfg.defaultTroop || "";
+  document.getElementById("new-tpl-track-tk").checked = cfg.trackTeamkills === true;
+
+  document.getElementById("tpl-form-title").textContent = `Template bearbeiten: ${key}`;
+  document.getElementById("btn-save-tpl").textContent = "💾 Änderungen speichern";
+  document.getElementById("btn-cancel-tpl").style.display = "inline-block";
+
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEditTemplate() {
+  document.getElementById("edit-tpl-original-key").value = "";
+  document.getElementById("new-tpl-key").value = "";
+  document.getElementById("new-tpl-name").value = "";
+  document.getElementById("new-tpl-prefix").value = "k.k. Protokoll des Events am";
+  document.getElementById("new-tpl-unit").value = "napo";
+  document.getElementById("new-tpl-leader").value = "Oberst Darthkiller";
+  document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
+  document.getElementById("new-tpl-troop").value = "Linieninfanterie";
+  document.getElementById("new-tpl-track-tk").checked = false;
+
+  document.getElementById("tpl-form-title").textContent = "Neues Event-Template erstellen";
+  document.getElementById("btn-save-tpl").textContent = "+ Template in Cloud speichern";
+  document.getElementById("btn-cancel-tpl").style.display = "none";
+}
+
+async function deleteTemplate(key) {
+  const tpls = getTemplates();
+  if (Object.keys(tpls).length <= 1) {
+    alert("Es muss mindestens ein Template erhalten bleiben.");
+    return;
+  }
+  if (!confirm(`Template '${key}' wirklich löschen?`)) return;
+
+  if (appData.templates && appData.templates[key]) {
+    delete appData.templates[key];
+    updateFormatDropdown();
+    updateTkFormatDropdown();
+    updateStatsFilterDropdown();
+    renderTemplatesTable();
+    onFormatChange();
+    await saveToCloud();
+    showToast("Template gelöscht & synchronisiert.");
+  }
+}
+
+function renderTemplatesTable() {
+  const tbody = document.getElementById("templates-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = "";
+  
+  const tpls = getTemplates();
+  for (const [key, cfg] of Object.entries(tpls)) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><code>${key}</code></td>
+      <td><strong>${cfg.name}</strong></td>
+      <td><span class="badge ${cfg.unit === 'bre' ? 'badge-bre' : 'badge-napo'}">${cfg.unit === 'bre' ? 'Eichenwacht' : 'Nr59'}</span></td>
+      <td>${cfg.defaultTroop || '-'}</td>
+      <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
+      <td>${cfg.defaultLeader || '-'}</td>
+      <td style="display:flex; gap:0.4rem;">
+        <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${key}')">🗑️ Löschen</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function exportBackup() {
+  const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData, null, 2));
+  const downloadAnchor = document.createElement("a");
+  downloadAnchor.setAttribute("href", dataStr);
+  const downloadName = `kk_protokolle_backup_${new Date().toISOString().split("T")[0]}.json`;
+  downloadAnchor.setAttribute("download", downloadName);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+}
+
+// Start beim Laden der Seite
+initEditor();
+loadFromCloud();
+</script>
+</body>
+</html>
