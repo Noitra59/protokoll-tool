@@ -242,6 +242,7 @@
   th { color: var(--text-muted); font-weight: 600; background: rgba(0,0,0,0.2); }
   tr:hover td { background: var(--surface-hover); }
 
+  /* Neue Template & Einheiten Badges nach Wunsch */
   .badge {
     display: inline-block;
     padding: 0.2rem 0.5rem;
@@ -249,8 +250,10 @@
     font-size: 0.75rem;
     font-weight: 600;
   }
-  .badge-napo { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
-  .badge-bre { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+  .badge-event { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+  .badge-training { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
+  .badge-napo { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); } /* Gelborange */
+  .badge-bre { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); } /* Grün */
   .badge-inactive { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
 
   .toast {
@@ -352,11 +355,6 @@
               <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
             </div>
           </div>
-
-          <div class="form-group" id="grp-mercs">
-            <label>Entsatzspieler / Milizen</label>
-            <input type="text" id="proto-mercs" value="/" oninput="updateOutput()">
-          </div>
         </div>
 
         <div class="card">
@@ -364,6 +362,12 @@
             <h2 style="border:none; margin:0; padding:0;">2. Anwesenheit (<span id="unit-badge">Nr59</span>)</h2>
           </div>
           <div id="attendance-list"></div>
+
+          <!-- Entsatzspieler / Milizen direkt hier am Ende von Block 2 -->
+          <div class="form-group" id="grp-mercs" style="margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+            <label>Entsatzspieler / Milizen</label>
+            <input type="text" id="proto-mercs" value="/" oninput="updateOutput()">
+          </div>
         </div>
 
         <div class="card">
@@ -1608,11 +1612,11 @@ function generateBBCode() {
   bb += `[size=90][b][color=#804000]Entsatzspieler des Heeres, Landwehrmänner & Milizen:[/color][/b][/size]\n`;
   bb += `${mercs}\n\n`;
 
-  bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/b][/size]\n`;
+  bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/size][/b]\n`;
   bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\n";
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
-  bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/b][/size]\n`;
+  bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
   bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
 
   if (cfg.isTraining) {
@@ -2265,12 +2269,20 @@ function renderTemplatesTable() {
   
   const tpls = getTemplates();
   for (const [key, cfg] of Object.entries(tpls)) {
+    const typeBadge = cfg.isTraining 
+      ? '<span class="badge badge-training">Training</span>' 
+      : '<span class="badge badge-event">Event</span>';
+      
+    const unitBadge = cfg.unit === 'bre' 
+      ? '<span class="badge badge-bre">Eichenwacht</span>' 
+      : '<span class="badge badge-napo">Nr59</span>';
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><code>${key}</code></td>
       <td><strong>${cfg.name}</strong></td>
-      <td>${cfg.isTraining ? '<span class="badge badge-bre">Training</span>' : '<span class="badge badge-napo">Event</span>'}</td>
-      <td><span class="badge ${cfg.unit === 'bre' ? 'badge-bre' : 'badge-napo'}">${cfg.unit === 'bre' ? 'Eichenwacht' : 'Nr59'}</span></td>
+      <td>${typeBadge}</td>
+      <td>${unitBadge}</td>
       <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
