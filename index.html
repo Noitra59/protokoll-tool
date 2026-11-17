@@ -120,6 +120,20 @@
   .btn-secondary:hover { background: #323741; }
   .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
 
+  /* Editor Modus Banner */
+  .mode-indicator {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mode-indicator.new { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+  .mode-indicator.edit { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+
   /* Anwesenheitsliste */
   .attendance-row {
     display: grid;
@@ -286,6 +300,12 @@
           <h2>1. Event & Kopfdaten</h2>
           <input type="hidden" id="edit-protocol-id" value="">
           
+          <!-- Indikator für Neu / Bearbeiten -->
+          <div id="editor-mode-banner" class="mode-indicator new">
+            <span>✨ Modus: Neues Protokoll erstellen</span>
+            <button class="btn btn-sm btn-secondary" id="btn-cancel-edit" style="display:none;" onclick="resetEditorMode()">Abbrechen</button>
+          </div>
+
           <div class="grid-2" style="gap: 0.75rem;">
             <div class="form-group">
               <label>Event-Format (Wochenrhythmus)</label>
@@ -321,7 +341,7 @@
             </div>
           </div>
 
-          <!-- Spezielles Zusatzfeld für Training (Rangaufstiege bei Training sichtbar) -->
+          <!-- Spezielles Zusatzfeld für Training -->
           <div class="grid-2" style="gap: 0.75rem; display:none;" id="grp-training-fields">
             <div class="form-group">
               <label>Rangaufstiege</label>
@@ -636,10 +656,10 @@
           <input type="text" id="new-tpl-prefix" value="k.k. Protokoll des Events am">
         </div>
         <div class="form-group">
-          <label>Protokoll-Typ (Normal vs. Training)</label>
+          <label>Event-Typ</label>
           <select id="new-tpl-is-training" onchange="onTemplateTypeToggle()">
-            <option value="false">Normales Event (mit Truppenklasse)</option>
-            <option value="true">Training (mit Rangaufstiegen / Auszeichnungen)</option>
+            <option value="false">Event</option>
+            <option value="true">Training</option>
           </select>
         </div>
       </div>
@@ -1019,6 +1039,33 @@ function updateStatsYearDropdown() {
       select.value = currentVal;
     }
   });
+}
+
+function updateEditorModeIndicator() {
+  const editId = document.getElementById("edit-protocol-id").value;
+  const banner = document.getElementById("editor-mode-banner");
+  const cancelBtn = document.getElementById("btn-cancel-edit");
+  if (!banner) return;
+
+  if (editId) {
+    banner.className = "mode-indicator edit";
+    banner.innerHTML = `<span>✏️ Modus: Vorhandenes Protokoll wird bearbeitet</span>`;
+    banner.appendChild(cancelBtn);
+    cancelBtn.style.display = "inline-block";
+  } else {
+    banner.className = "mode-indicator new";
+    banner.innerHTML = `<span>✨ Modus: Neues Protokoll erstellen</span>`;
+    cancelBtn.style.display = "none";
+  }
+}
+
+function resetEditorMode() {
+  document.getElementById("edit-protocol-id").value = "";
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("proto-date").value = today;
+  onFormatChange(true);
+  updateEditorModeIndicator();
+  showToast("Zu neuem Protokoll gewechselt.");
 }
 
 function onFormatChange(resetFields = true) {
@@ -1649,7 +1696,6 @@ async function saveProtocol() {
   if (editId) {
     const idx = appData.protocols.findIndex(p => p.id === editId);
     if (idx !== -1) appData.protocols[idx] = protocolObj;
-    if (editProtoIdEl) editProtoIdEl.value = "";
   } else {
     appData.protocols.unshift(protocolObj);
   }
@@ -1658,6 +1704,7 @@ async function saveProtocol() {
 
   await saveToCloud();
   updateStatsYearDropdown();
+  updateEditorModeIndicator();
   showToast("Protokoll gespeichert & in Google Sheets synchronisiert!");
 }
 
@@ -1735,6 +1782,7 @@ function editProtocol(id) {
 
   currentAttendance = JSON.parse(JSON.stringify(p.attendance || {}));
   onFormatChange(false);
+  updateEditorModeIndicator();
 
   switchTab('editor', document.querySelector("nav button"));
   showToast("Protokoll zum Bearbeiten geladen.");
