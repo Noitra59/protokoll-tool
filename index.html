@@ -316,13 +316,14 @@
               <input type="text" id="proto-scribe" value="Fähnrich Lorenz" oninput="updateOutput()">
             </div>
             <div class="form-group" id="grp-troop">
-              <label>Eingesetzte Truppenklasse</label>
+              <label id="lbl-troop-or-prom">Eingesetzte Truppenklasse</label>
               <input type="text" id="proto-troop" value="Linieninfanterie" oninput="updateOutput()">
             </div>
           </div>
 
-          <div class="grid-2" style="gap: 0.75rem;" id="grp-awards">
-            <div class="form-group" id="grp-promotions">
+          <!-- Spezielles Zusatzfeld für Training (Rangaufstiege bei Training sichtbar) -->
+          <div class="grid-2" style="gap: 0.75rem; display:none;" id="grp-training-fields">
+            <div class="form-group">
               <label>Rangaufstiege</label>
               <input type="text" id="proto-promotions" value="/" oninput="updateOutput()">
             </div>
@@ -332,7 +333,7 @@
             </div>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" id="grp-mercs">
             <label>Entsatzspieler / Gäste (optional)</label>
             <input type="text" id="proto-mercs" value="/" oninput="updateOutput()">
           </div>
@@ -635,33 +636,40 @@
           <input type="text" id="new-tpl-prefix" value="k.k. Protokoll des Events am">
         </div>
         <div class="form-group">
+          <label>Protokoll-Typ (Normal vs. Training)</label>
+          <select id="new-tpl-is-training" onchange="onTemplateTypeToggle()">
+            <option value="false">Normales Event (mit Truppenklasse)</option>
+            <option value="true">Training (mit Rangaufstiegen / Auszeichnungen)</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="gap: 0.75rem;">
+        <div class="form-group">
           <label>Einheit-Zuordnung</label>
           <select id="new-tpl-unit">
             <option value="napo">Nr59</option>
             <option value="bre">Eichenwacht</option>
           </select>
         </div>
-      </div>
-      <div class="grid-2" style="gap: 0.75rem;">
         <div class="form-group">
           <label>Standard-Leiter / Offizier</label>
           <input type="text" id="new-tpl-leader" value="Oberst Darthkiller">
         </div>
+      </div>
+      <div class="grid-2" style="gap: 0.75rem;">
         <div class="form-group">
           <label>Standard-Schriftführer</label>
           <input type="text" id="new-tpl-scribe" value="Fähnrich Lorenz">
         </div>
-      </div>
-      <div class="grid-2" style="gap: 0.75rem;">
-        <div class="form-group">
+        <div class="form-group" id="tpl-troop-group">
           <label>Standard-Truppenklasse</label>
           <input type="text" id="new-tpl-troop" value="Linieninfanterie">
         </div>
-        <div class="form-group" style="display:flex; align-items:center; padding-top:1.5rem;">
-          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
-            <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
-          </label>
-        </div>
+      </div>
+      <div class="form-group" style="display:flex; align-items:center; padding-top:0.5rem;">
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
+          <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
+        </label>
       </div>
       
       <div style="display:flex; gap:0.5rem; margin-top:1rem;">
@@ -677,10 +685,9 @@
           <tr>
             <th>Schlüssel</th>
             <th>Anzeigename</th>
+            <th>Typ</th>
             <th>Einheit</th>
-            <th>Truppenklasse</th>
             <th>Teamkills</th>
-            <th>Standard-Leiter</th>
             <th>Aktionen</th>
           </tr>
         </thead>
@@ -716,12 +723,8 @@ const DEFAULT_TEMPLATES = {
     defaultLeader: "Oberst Darthkiller",
     defaultScribe: "Fähnrich Lorenz",
     defaultTroop: "Linieninfanterie",
-    showSubleader: true,
-    showTroop: true,
-    showPromotions: false,
-    showAwards: false,
-    trackTeamkills: true,
-    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+    isTraining: false,
+    trackTeamkills: true
   },
   fri_train: {
     name: "Freitag – Training",
@@ -730,12 +733,8 @@ const DEFAULT_TEMPLATES = {
     defaultLeader: "Oberst Darthkiller",
     defaultScribe: "Fähnrich Lorenz",
     defaultTroop: "",
-    showSubleader: false,
-    showTroop: false,
-    showPromotions: true,
-    showAwards: true,
-    trackTeamkills: false,
-    summaryLabel: "Trainigseinheiten"
+    isTraining: true,
+    trackTeamkills: false
   },
   fri_bre: {
     name: "Freitag – Eichenwacht Event",
@@ -744,12 +743,8 @@ const DEFAULT_TEMPLATES = {
     defaultLeader: "Druide Lama, Druide Darthkiller",
     defaultScribe: "Banneret Lorenz",
     defaultTroop: "Bogenschützen",
-    showSubleader: true,
-    showTroop: true,
-    showPromotions: false,
-    showAwards: true,
-    trackTeamkills: true,
-    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+    isTraining: false,
+    trackTeamkills: true
   },
   sun_33rd: {
     name: "Sonntag – 33rd Linebattle",
@@ -758,12 +753,8 @@ const DEFAULT_TEMPLATES = {
     defaultLeader: "Oberst Lama",
     defaultScribe: "Fähnrich Lorenz",
     defaultTroop: "Linieninfanterie",
-    showSubleader: true,
-    showTroop: true,
-    showPromotions: false,
-    showAwards: false,
-    trackTeamkills: true,
-    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+    isTraining: false,
+    trackTeamkills: true
   }
 };
 
@@ -908,7 +899,7 @@ function initEditor() {
 
   const day = new Date().getDay();
   let defaultKey = "tue_hli";
-  if (day === 5) defaultKey = "fri_bre";
+  if (day === 5) defaultKey = "fri_train";
   else if (day === 0) defaultKey = "sun_33rd";
 
   const tpls = getTemplates();
@@ -1022,7 +1013,6 @@ function updateStatsYearDropdown() {
       select.appendChild(opt);
     });
 
-    // Beim ersten Laden immer das neuste (erste in sortierter Liste) Jahr als Standard setzen
     if (isFirstLoad && sortedYears.length > 0) {
       select.value = sortedYears[0];
     } else if (select.querySelector(`option[value="${currentVal}"]`)) {
@@ -1039,20 +1029,21 @@ function onFormatChange(resetFields = true) {
   const cfg = tpls[fmtKey] || Object.values(tpls)[0];
   if (!cfg) return;
 
-  const lblLeader = document.getElementById("lbl-leader");
-  const grpSubleader = document.getElementById("grp-subleader");
   const grpTroop = document.getElementById("grp-troop");
-  const grpPromotions = document.getElementById("grp-promotions");
-  const grpAwards = document.getElementById("grp-awards");
+  const grpTrainingFields = document.getElementById("grp-training-fields");
   const lblSummary = document.getElementById("lbl-summary");
   const unitBadge = document.getElementById("unit-badge");
 
-  if (lblLeader) lblLeader.textContent = cfg.showPromotions ? "Trainingsleiter" : "Leitender Offizier";
-  if (grpSubleader) grpSubleader.style.display = (cfg.showSubleader !== false) ? "block" : "none";
-  if (grpTroop) grpTroop.style.display = (cfg.showTroop !== false) ? "block" : "none";
-  if (grpPromotions) grpPromotions.style.display = cfg.showPromotions ? "block" : "none";
-  if (grpAwards) grpAwards.style.display = (cfg.showPromotions || cfg.showAwards) ? "grid" : "none";
-  if (lblSummary) lblSummary.textContent = cfg.summaryLabel || "Kurzzusammenfassung des Ereignisses";
+  if (cfg.isTraining) {
+    if (grpTroop) grpTroop.style.display = "none";
+    if (grpTrainingFields) grpTrainingFields.style.display = "grid";
+    if (lblSummary) lblSummary.textContent = "Übungen und Trainingseinheiten";
+  } else {
+    if (grpTroop) grpTroop.style.display = "block";
+    if (grpTrainingFields) grpTrainingFields.style.display = "none";
+    if (lblSummary) lblSummary.textContent = "Kurzzusammenfassung des Ereignisses";
+  }
+
   if (unitBadge) unitBadge.textContent = cfg.unit === "bre" ? "Eichenwacht" : "Nr59";
 
   const editProtoId = document.getElementById("edit-protocol-id");
@@ -1080,6 +1071,14 @@ function onFormatChange(resetFields = true) {
 
   renderAttendanceList();
   updateOutput();
+}
+
+function onTemplateTypeToggle() {
+  const isTraining = document.getElementById("new-tpl-is-training").value === "true";
+  const troopGroup = document.getElementById("tpl-troop-group");
+  if (troopGroup) {
+    troopGroup.style.display = isTraining ? "none" : "block";
+  }
 }
 
 function renderAttendanceList() {
@@ -1538,7 +1537,7 @@ function generateBBCode() {
 
   let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]\n\n`;
 
-  if (cfg.showPromotions) {
+  if (cfg.isTraining) {
     bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
     bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
@@ -1547,11 +1546,7 @@ function generateBBCode() {
     bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
     if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n`;
-    if (cfg.showTroop !== false) bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
-    else bb += `\n`;
-    if (cfg.showAwards) {
-      bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
-    }
+    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
   }
 
   bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
@@ -1568,7 +1563,12 @@ function generateBBCode() {
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/b][/size]\n`;
   bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
 
-  bb += `[b]${cfg.summaryLabel || "Kurzzusammenfassung des Ereignisses"}:[/b] ${summary}\n\n`;
+  if (cfg.isTraining) {
+    bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
+  } else {
+    bb += `[b]Kurzzusammenfassung des Ereignisses:[/b] ${summary}\n\n`;
+  }
+
   bb += `[color=#408000]Positiv hervorzuheben[/color]: ${pos}\n`;
   bb += `[color=#BF0040]Negativ hervorzuheben[/color]: ${neg}\n\n`;
   bb += `[i]Anmerkungen:[/i] ${notes}`;
@@ -1630,11 +1630,11 @@ async function saveProtocol() {
     format: fmtKey,
     date: document.getElementById("proto-date").value,
     leader: document.getElementById("proto-leader").value,
-    subleader: document.getElementById("proto-subleader").value,
+    subleader: document.getElementById("proto-subleader") ? document.getElementById("proto-subleader").value : "/",
     scribe: document.getElementById("proto-scribe").value,
-    troop: document.getElementById("proto-troop").value,
-    promotions: document.getElementById("proto-promotions").value,
-    awards: document.getElementById("proto-awards").value,
+    troop: document.getElementById("proto-troop") ? document.getElementById("proto-troop").value : "",
+    promotions: document.getElementById("proto-promotions") ? document.getElementById("proto-promotions").value : "/",
+    awards: document.getElementById("proto-awards") ? document.getElementById("proto-awards").value : "/",
     mercs: document.getElementById("proto-mercs").value,
     summary: document.getElementById("proto-summary").value,
     pos: document.getElementById("proto-pos").value,
@@ -1722,11 +1722,11 @@ function editProtocol(id) {
   document.getElementById("proto-format").value = p.format;
   document.getElementById("proto-date").value = p.date;
   document.getElementById("proto-leader").value = p.leader;
-  document.getElementById("proto-subleader").value = p.subleader || "/";
+  if(document.getElementById("proto-subleader")) document.getElementById("proto-subleader").value = p.subleader || "/";
   document.getElementById("proto-scribe").value = p.scribe;
-  document.getElementById("proto-troop").value = p.troop || "";
-  document.getElementById("proto-promotions").value = p.promotions || "/";
-  document.getElementById("proto-awards").value = p.awards || "/";
+  if(document.getElementById("proto-troop")) document.getElementById("proto-troop").value = p.troop || "";
+  if(document.getElementById("proto-promotions")) document.getElementById("proto-promotions").value = p.promotions || "/";
+  if(document.getElementById("proto-awards")) document.getElementById("proto-awards").value = p.awards || "/";
   document.getElementById("proto-mercs").value = p.mercs || "/";
   document.getElementById("proto-summary").value = p.summary;
   document.getElementById("proto-pos").value = p.pos;
@@ -1831,7 +1831,6 @@ function renderStatsChart() {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
   
-  // High-DPI Fix für gestochen scharfe Linien
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * dpr;
@@ -1845,12 +1844,10 @@ function renderStatsChart() {
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
-  // Protokolle chronologisch sortieren (von alt nach neu für den Verlauf)
   const protocols = [...(appData.protocols || [])]
     .filter(p => matchesStatsFilters(p, filter, yearFilter))
     .sort((a, b) => a.date.localeCompare(b.date));
 
-  // Teamkill-Logs nach Datum zuordnen
   const tkMap = {};
   (appData.teamkillLogs || []).forEach(t => {
     if (matchesStatsFilters(t, filter, yearFilter)) {
@@ -1870,7 +1867,6 @@ function renderStatsChart() {
     return;
   }
 
-  // Datenpunkte vorbereiten
   const dataPoints = protocols.map(p => {
     let pres = 0, exc = 0, unexc = 0;
     if (p.attendance) {
@@ -1884,7 +1880,6 @@ function renderStatsChart() {
     return { date: formatGermanDate(p.date), pres, exc, unexc, tk };
   });
 
-  // Maximalwert für Skalierung finden
   let maxVal = 5;
   dataPoints.forEach(d => {
     const m = Math.max(d.pres, d.exc, d.unexc, d.tk);
@@ -1898,7 +1893,6 @@ function renderStatsChart() {
   const chartWidth = rect.width - paddingLeft - paddingRight;
   const chartHeight = rect.height - paddingTop - paddingBottom;
 
-  // Hintergrund-Linien & Achsen
   ctx.strokeStyle = "rgba(46, 51, 59, 0.6)";
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
@@ -1916,12 +1910,11 @@ function renderStatsChart() {
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
-  const barWidth = Math.max(2, Math.min(6, (barGroupWidth / 5) - 1)); // Sehr dünne Balken
+  const barWidth = Math.max(2, Math.min(6, (barGroupWidth / 5) - 1));
 
   dataPoints.forEach((d, idx) => {
     const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
     
-    // X-Achsen Beschriftung (Datum, bei vielen Punkten gedimmt oder gekürzt)
     if (dataPoints.length <= 15 || idx % Math.ceil(dataPoints.length / 12) === 0) {
       ctx.fillStyle = "#9ba1a6";
       ctx.font = "9px sans-serif";
@@ -2110,6 +2103,7 @@ async function saveTemplate() {
   const name = document.getElementById("new-tpl-name").value.trim();
   const prefix = document.getElementById("new-tpl-prefix").value.trim();
   const unit = document.getElementById("new-tpl-unit").value;
+  const isTraining = document.getElementById("new-tpl-is-training").value === "true";
   const leader = document.getElementById("new-tpl-leader").value.trim();
   const scribe = document.getElementById("new-tpl-scribe").value.trim();
   const troop = document.getElementById("new-tpl-troop").value.trim();
@@ -2132,15 +2126,11 @@ async function saveTemplate() {
     name: name,
     titlePrefix: prefix,
     unit: unit,
+    isTraining: isTraining,
     defaultLeader: leader,
     defaultScribe: scribe,
     defaultTroop: troop,
-    showSubleader: true,
-    showTroop: true,
-    showPromotions: false,
-    showAwards: false,
-    trackTeamkills: trackTK,
-    summaryLabel: "Kurzzusammenfassung des Ereignisses"
+    trackTeamkills: trackTK
   };
 
   cancelEditTemplate();
@@ -2163,10 +2153,12 @@ function editTemplate(key) {
   document.getElementById("new-tpl-name").value = cfg.name;
   document.getElementById("new-tpl-prefix").value = cfg.titlePrefix;
   document.getElementById("new-tpl-unit").value = cfg.unit;
+  document.getElementById("new-tpl-is-training").value = cfg.isTraining ? "true" : "false";
   document.getElementById("new-tpl-leader").value = cfg.defaultLeader || "";
   document.getElementById("new-tpl-scribe").value = cfg.defaultScribe || "";
   document.getElementById("new-tpl-troop").value = cfg.defaultTroop || "";
   document.getElementById("new-tpl-track-tk").checked = cfg.trackTeamkills === true;
+  onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = `Template bearbeiten: ${key}`;
   document.getElementById("btn-save-tpl").textContent = "💾 Änderungen speichern";
@@ -2181,10 +2173,12 @@ function cancelEditTemplate() {
   document.getElementById("new-tpl-name").value = "";
   document.getElementById("new-tpl-prefix").value = "k.k. Protokoll des Events am";
   document.getElementById("new-tpl-unit").value = "napo";
+  document.getElementById("new-tpl-is-training").value = "false";
   document.getElementById("new-tpl-leader").value = "Oberst Darthkiller";
   document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
   document.getElementById("new-tpl-troop").value = "Linieninfanterie";
   document.getElementById("new-tpl-track-tk").checked = false;
+  onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = "Neues Event-Template erstellen";
   document.getElementById("btn-save-tpl").textContent = "+ Template in Cloud speichern";
@@ -2222,10 +2216,9 @@ function renderTemplatesTable() {
     tr.innerHTML = `
       <td><code>${key}</code></td>
       <td><strong>${cfg.name}</strong></td>
+      <td>${cfg.isTraining ? '<span class="badge badge-bre">Training</span>' : '<span class="badge badge-napo">Event</span>'}</td>
       <td><span class="badge ${cfg.unit === 'bre' ? 'badge-bre' : 'badge-napo'}">${cfg.unit === 'bre' ? 'Eichenwacht' : 'Nr59'}</span></td>
-      <td>${cfg.defaultTroop || '-'}</td>
       <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
-      <td>${cfg.defaultLeader || '-'}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${key}')">🗑️ Löschen</button>
