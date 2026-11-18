@@ -180,8 +180,8 @@
   .radio-pill input[value="excused"]:checked + span { background: rgba(245, 158, 11, 0.2); border-color: var(--warning); color: var(--warning); }
   .radio-pill input[value="unexcused"]:checked + span { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
 
-  /* Rekord-Boxen (3 Spalten) */
-  .record-box-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; }
+  /* Rekord-Boxen (3 Spalten) mit einheitlicher Höhe */
+  .record-box-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; align-items: stretch; }
   @media (max-width: 900px) { .record-box-grid { grid-template-columns: 1fr; } }
   .record-box {
     background: rgba(239, 68, 68, 0.08);
@@ -189,11 +189,14 @@
     border-radius: var(--radius);
     padding: 1rem;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
   }
   .record-emoji-large { font-size: 1.8rem; line-height: 1.2; margin-bottom: 0.15rem; }
   .record-box h3 { font-size: 0.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0.2rem; }
-  .record-details { font-size: 0.82rem; color: var(--text); }
+  .record-details { font-size: 0.82rem; color: var(--text); margin-top: auto; }
 
   /* Chart Container */
   .chart-container {
@@ -471,20 +474,26 @@
             <div class="record-box">
               <div class="record-emoji-large">Ø</div>
               <h3>Regiments-Durchschnitt</h3>
-              <div id="record-avg-val" class="record-value">0.0 TKs</div>
-              <div id="record-avg-details" class="record-details">Pro Event</div>
+              <div>
+                <div id="record-avg-val" class="record-value">0.0 TKs</div>
+                <div id="record-avg-details" class="record-details">Pro Event</div>
+              </div>
             </div>
             <div class="record-box">
               <div class="record-emoji-large">💂‍♂️💂‍♂️💂‍♂️</div>
               <h3>Regiments-Rekord</h3>
-              <div id="record-reg-val" class="record-value">0 TKs</div>
-              <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
+              <div>
+                <div id="record-reg-val" class="record-value">0 TKs</div>
+                <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
+              </div>
             </div>
             <div class="record-box">
               <div class="record-emoji-large">💀</div>
               <h3>Einzelspieler-Rekord</h3>
-              <div id="record-player-val" class="record-value">0 TKs</div>
-              <div id="record-player-details" class="record-details">Max. an einem Event</div>
+              <div>
+                <div id="record-player-val" class="record-value">0 TKs</div>
+                <div id="record-player-details" class="record-details">Max. an einem Event</div>
+              </div>
             </div>
           </div>
         </div>
@@ -1437,7 +1446,6 @@ function renderTkHistory() {
       Object.values(log.records).forEach(r => sumTK += (parseInt(r.count) || 0));
     }
 
-    // Dropdown mit allen verfügbaren Nr59-Events
     let formatOptions = "";
     for (const [key, cfg] of Object.entries(tpls)) {
       if (cfg.trackTeamkills !== false && cfg.unit === "napo") {
@@ -1502,7 +1510,7 @@ function renderTkRecords() {
   (appData.members || []).filter(m => m.inNapo).forEach(m => membersMap[m.id] = m);
 
   let totalRegimentTK = 0;
-  let formatTotals = {}; // Speichert Summe und Anzahl pro Event-Format
+  let formatTotals = {};
   let maxEventTK = -1;
   let bestEventLogs = [];
 
@@ -2154,11 +2162,11 @@ function renderStats() {
 
             if (memberSum > 0 || unitTotalEvents > 0) {
               const effectiveTotal = Math.max(unitTotalEvents, memberSum);
-              const diffUnexc = Math.max(0, effectiveTotal - memberSum);
+              // Keine automatische Auffüllung mehr als unentschuldigt (diffUnexc entfernt)
               pres += pAdd;
               exc += eAdd;
-              unexc += (uAdd + diffUnexc);
-              total += effectiveTotal;
+              unexc += uAdd;
+              total += memberSum; // Zählt nur die tatsächlich eingetragene Summe statt künstlich auf Gesamt-Events aufzublähen
             }
           }
         }
@@ -2175,11 +2183,10 @@ function renderStats() {
 
             if (memberSum > 0 || unitTotalEvents > 0) {
               const effectiveTotal = Math.max(unitTotalEvents, memberSum);
-              const diffUnexc = Math.max(0, effectiveTotal - memberSum);
               pres += pAdd;
               exc += eAdd;
-              unexc += (uAdd + diffUnexc);
-              total += effectiveTotal;
+              unexc += uAdd;
+              total += memberSum;
             }
           }
         }
