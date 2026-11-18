@@ -407,7 +407,7 @@
 
           <div class="form-group" id="grp-mercs" style="margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem;">
             <label>Entsatzspieler / Milizen</label>
-            <input type="text" id="proto-mercs" value="/" oninput="updateOutput()">
+            <input type="text" id="proto-mercs" value="" oninput="updateOutput()">
           </div>
         </div>
 
@@ -457,7 +457,7 @@
   <!-- TAB 2: VERLAUF -->
   <div id="tab-history" class="tab-content">
     <div class="card">
-      <h2>Gespeicherte Protokolle (Gemeinsamer Verlauf)</h2>
+      <h2>Gespeicherte Protokolle</h2>
       <table>
         <thead>
           <tr>
@@ -602,8 +602,7 @@
   <!-- TAB 4: STATISTIKEN -->
   <div id="tab-stats" class="tab-content">
     <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
-        <h2 style="border:none; margin:0; padding:0;">Anwesenheits- & Teamkill-Entwicklung</h2>
+      <div style="display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
         <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
           <div style="display:flex; gap:0.4rem; align-items:center;">
             <label style="margin:0;">Format:</label>
@@ -794,7 +793,7 @@
       
       <div class="grid-2" style="gap: 0.75rem;">
         <div class="form-group">
-          <label>Interner Schlüssel (ID, z.B. mittwoch_event)</label>
+          <label>Interner Schlüssel, ID</label>
           <input type="text" id="new-tpl-key" placeholder="z.B. mittwoch_event">
         </div>
         <div class="form-group">
@@ -1320,7 +1319,7 @@ function onFormatChange(resetFields = true) {
     if (leaderEl) leaderEl.value = cfg.defaultLeader || "";
     if (scribeEl) scribeEl.value = cfg.defaultScribe || "";
     if (troopEl) troopEl.value = cfg.defaultTroop || "";
-    if (mercsEl) mercsEl.value = "/";
+    if (mercsEl) mercsEl.value = "";
     if (summaryEl) summaryEl.value = "";
   }
 
@@ -3071,11 +3070,11 @@ function generateBriefingReport() {
   });
 
   let topMemberText = "Keine Daten";
-  let topMemberCountText = "0 Teile";
+  let topMemberCountText = "0 Event(s)";
 
   if (topMembers.length > 0) {
     topMemberText = topMembers.map(t => t.name).join("<br>");
-    topMemberCountText = `${maxCount} Teile`;
+    topMemberCountText = `${maxCount} Event(s)`;
   }
 
   const statEventsEl = document.getElementById("briefing-stat-events");
