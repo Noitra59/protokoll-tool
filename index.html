@@ -502,8 +502,6 @@
             </div>
           </div>
 
-
-
           <div id="tk-member-list"></div>
         </div>
       </div>
@@ -642,13 +640,12 @@
         <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
       </div>
 
-      <!-- Regiments-Briefing / Report Box -->
+      <!-- Regiments-Briefing / Report Box (ohne Kopieren-Button) -->
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
           <h3 style="font-size: 1rem; color: var(--text); display:flex; align-items:center; gap:0.5rem; margin:0;">
             <span>📋 Regiments-Briefing & Report (<span id="briefing-period-label">Gesamt</span>)</span>
           </h3>
-          <button class="btn btn-secondary btn-sm" onclick="copyBriefingReport()">📋 Report kopieren</button>
         </div>
         <div id="briefing-visual-output" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
@@ -665,7 +662,6 @@
             <div id="briefing-stat-top-count" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">0 Teilnahmen</div>
           </div>
         </div>
-        <textarea id="briefing-output" style="display:none;"></textarea>
       </div>
 
       <table>
@@ -683,7 +679,7 @@
       </table>
     </div>
 
-    <!-- Jahres-Gesamtaktivität manuell nachtragen (Einklappbar) -->
+    <!-- Jahres-Gesamtaktivität manuell nachtragen -->
     <details id="manual-att-details" class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onManualDetailsToggle(this)">
       <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
         <span>📁 Jahres-Gesamtaktivität manuell nachtragen</span>
@@ -932,7 +928,6 @@ let currentAttendance = {};
 let currentTkInputs = {};
 let isFirstLoad = true;
 
-// Sortierzustände für Tabellen
 let statsSortCol = null;
 let statsSortAsc = true;
 let tkStatsSortCol = 'tk';
@@ -1409,9 +1404,6 @@ function setMemberNote(id, note) {
   updateOutput();
 }
 
-// ==========================================
-// TEAMKILLS TAB LOGIK & STATISTIK (Nur Nr59)
-// ==========================================
 function onTkFormatChange() {
   loadExistingTkForDate();
 }
@@ -1734,6 +1726,8 @@ function sortTkStatsTable(col) {
 function renderTkStats() {
   const tkStatsFilterEl = document.getElementById("tk-stats-filter");
   const tkStatsYearFilterEl = document.getElementById("tk-stats-year-filter");
+  const dateFromEl = document.getElementById("stats-date-from");
+  const dateToEl = document.getElementById("stats-date-to");
   const tbody = document.getElementById("tk-stats-body");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -1751,6 +1745,8 @@ function renderTkStats() {
 
   const filter = tkStatsFilterEl ? tkStatsFilterEl.value : "all";
   const yearFilter = tkStatsYearFilterEl ? tkStatsYearFilterEl.value : "all";
+  const dateFrom = dateFromEl ? dateFromEl.value : "";
+  const dateTo = dateToEl ? dateToEl.value : "";
 
   const tpls = getTemplates();
   const filteredProtocols = (appData.protocols || []).filter(p => {
@@ -1777,7 +1773,7 @@ function renderTkStats() {
       }
     });
 
-    if (filter === "all" && appData.manualAttendance) {
+    if (filter === "all" && appData.manualAttendance && !dateFrom && !dateTo) {
       if (yearFilter === "all") {
         Object.values(appData.manualAttendance).forEach(yearObj => {
           const napoObj = getManualUnitData(yearObj, "napo");
@@ -1882,9 +1878,6 @@ async function deleteTkLog(id) {
   showToast("Eintrag gelöscht.");
 }
 
-// ==========================================
-// PROTOKOLL GENERIERUNG
-// ==========================================
 function formatGermanDate(isoDate) {
   if (!isoDate) return "TT.MM.JJJJ";
   const parts = isoDate.split("-");
@@ -2151,9 +2144,6 @@ async function deleteProtocol(id) {
   showToast("Protokoll gelöscht.");
 }
 
-// ==========================================
-// STATISTIKEN, DIAGRAMM & MANUELLE JAHRESAKTIVITÄT
-// ==========================================
 function getManualUnitData(yearObj, unit) {
   if (!yearObj) return null;
   if (yearObj[unit]) {
@@ -2236,6 +2226,8 @@ function renderStats() {
   generateBriefingReport();
   const statsFilterEl = document.getElementById("stats-filter");
   const statsYearFilterEl = document.getElementById("stats-year-filter");
+  const dateFromEl = document.getElementById("stats-date-from");
+  const dateToEl = document.getElementById("stats-date-to");
   const tbody = document.getElementById("stats-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
@@ -2253,6 +2245,8 @@ function renderStats() {
 
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
+  const dateFrom = dateFromEl ? dateFromEl.value : "";
+  const dateTo = dateToEl ? dateToEl.value : "";
 
   const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo));
 
@@ -2274,7 +2268,7 @@ function renderStats() {
       }
     });
 
-    if (appData.manualAttendance) {
+    if (appData.manualAttendance && !dateFrom && !dateTo) {
       const yearsToProcess = yearFilter === "all"
         ? Object.keys(appData.manualAttendance)
         : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
@@ -2401,8 +2395,13 @@ function renderStatsChart() {
 
   const statsFilterEl = document.getElementById("stats-filter");
   const statsYearFilterEl = document.getElementById("stats-year-filter");
+  const dateFromEl = document.getElementById("stats-date-from");
+  const dateToEl = document.getElementById("stats-date-to");
+  
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
+  const dateFrom = dateFromEl ? dateFromEl.value : "";
+  const dateTo = dateToEl ? dateToEl.value : "";
 
   const tpls = getTemplates();
   const eventsByKey = {};
@@ -2634,9 +2633,6 @@ async function saveManualAttendance() {
   showToast(`Jahresaktivität (${unitLabel}) für ${year} gespeichert & synchronisiert!`);
 }
 
-// ==========================================
-// MITGLIEDERLISTE
-// ==========================================
 function renderMembers() {
   const tbody = document.getElementById("members-table-body");
   if (!tbody) return;
@@ -2790,9 +2786,6 @@ async function deleteMember(id) {
   showToast("Mitglied gelöscht & synchronisiert.");
 }
 
-// ==========================================
-// TEMPLATES
-// ==========================================
 async function saveTemplate() {
   const originalKey = document.getElementById("edit-tpl-original-key").value.trim();
   const key = document.getElementById("new-tpl-key").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
@@ -2945,33 +2938,32 @@ function exportBackup() {
   downloadAnchor.remove();
 }
 
-
 function generateBriefingReport() {
   const statsFilterEl = document.getElementById("stats-filter");
   const statsYearFilterEl = document.getElementById("stats-year-filter");
+  const dateFromEl = document.getElementById("stats-date-from");
+  const dateToEl = document.getElementById("stats-date-to");
   const briefingLabelEl = document.getElementById("briefing-period-label");
-  const briefingOutputEl = document.getElementById("briefing-output");
 
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
+  const dateFrom = dateFromEl ? dateFromEl.value : "";
+  const dateTo = dateToEl ? dateToEl.value : "";
 
   let periodName = "Gesamt";
-  if (yearFilter !== "all") {
+  if (dateFrom || dateTo) {
+    periodName = `${dateFrom || 'Anfang'} bis ${dateTo || 'heute'}`;
+  } else if (yearFilter !== "all") {
     periodName = yearFilter;
-    if (filter === "napo_all") periodName += " (Nr59)";
-    else if (filter === "bre_all") periodName += " (Eichenwacht)";
-    else if (filter !== "all") {
-      const tpls = getTemplates();
-      if (tpls[filter]) periodName += ` (${tpls[filter].name})`;
-    }
-  } else {
-    if (filter === "napo_all") periodName = "Alle Nr59-Events";
-    else if (filter === "bre_all") periodName = "Alle Eichenwacht-Events";
-    else if (filter !== "all") {
-      const tpls = getTemplates();
-      if (tpls[filter]) periodName = tpls[filter].name;
-    }
   }
+
+  if (filter === "napo_all") periodName += " (Nr59)";
+  else if (filter === "bre_all") periodName += " (Eichenwacht)";
+  else if (filter !== "all") {
+    const tpls = getTemplates();
+    if (tpls[filter]) periodName += ` (${tpls[filter].name})`;
+  }
+
   if (briefingLabelEl) briefingLabelEl.textContent = periodName;
 
   const tpls = getTemplates();
@@ -3052,7 +3044,6 @@ function generateBriefingReport() {
     }
   });
 
-  // Update visual elements
   const statEventsEl = document.getElementById("briefing-stat-events");
   const statAvgEl = document.getElementById("briefing-stat-avg");
   const statTopEl = document.getElementById("briefing-stat-top");
@@ -3062,20 +3053,8 @@ function generateBriefingReport() {
   if (statAvgEl) statAvgEl.textContent = avgAttendance;
   if (statTopEl) statTopEl.textContent = topMemberName;
   if (statTopCountEl) statTopCountEl.textContent = topMemberCount > 0 ? `${topMemberCount} Teilnahmen` : "Keine Teilnahmen";
-
-  if (briefingOutputEl) {
-    let reportText = `📜 Regiments-Briefing & Report — Zeitraum: [b]${periodName}[/b]\n\n`;
-    reportText += `• [b]Durchgeführte Events:[/b] ${totalEventsCount}\n`;
-    reportText += `• [b]Durchschnittliche Anwesenheit:[/b] ${avgAttendance} Spieler pro Event\n`;
-    reportText += `• [b]Aktivster Soldat:[/b] ${topMemberName} (${topMemberCount} Teilnahmen)\n\n`;
-    reportText += `[i]Erstellt mit dem k.k. Protokoll-Manager[/i]`;
-    briefingOutputEl.value = reportText.replace(/\\n/g, '\n');
-  }
 }
 
-
-
-// Start beim Laden der Seite
 initEditor();
 loadFromCloud();
 </script>
