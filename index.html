@@ -640,26 +640,33 @@
         <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
       </div>
 
-      <!-- Regiments-Briefing / Report Box (ohne Kopieren-Button) -->
+      <!-- Regiments-Briefing / Report Box (Kompakt im Grid) -->
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
-          <h3 style="font-size: 1rem; color: var(--text); display:flex; align-items:center; gap:0.5rem; margin:0;">
-            <span>📋 Regiments-Briefing & Report (<span id="briefing-period-label">Gesamt</span>)</span>
-          </h3>
-        </div>
-        <div id="briefing-visual-output" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Durchgeführte Events</div>
-            <div id="briefing-stat-events" style="font-size: 1.4rem; font-weight: 800; color: var(--primary);">0</div>
+        <div id="briefing-visual-output" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.75rem;">
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Events</div>
+            <div id="briefing-stat-events" style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">0</div>
           </div>
-          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Ø Anwesenheit</div>
-            <div id="briefing-stat-avg" style="font-size: 1.4rem; font-weight: 800; color: var(--success);">0.0</div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Ø Anwesend</div>
+            <div id="briefing-stat-avg" style="font-size: 1.2rem; font-weight: 800; color: var(--success);">0.0</div>
           </div>
-          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
-            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Aktivster Soldat</div>
-            <div id="briefing-stat-top" style="font-size: 1.1rem; font-weight: 700; color: var(--warning); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Keine Daten</div>
-            <div id="briefing-stat-top-count" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">0 Teilnahmen</div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Ø Abgem.</div>
+            <div id="briefing-stat-avg-exc" style="font-size: 1.2rem; font-weight: 800; color: var(--warning);">0.0</div>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Ø Unentschl.</div>
+            <div id="briefing-stat-avg-unexc" style="font-size: 1.2rem; font-weight: 800; color: var(--danger);">0.0</div>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Ø TKs</div>
+            <div id="briefing-stat-avg-tk" style="font-size: 1.2rem; font-weight: 800; color: #a855f7;">0.0</div>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Aktivster</div>
+            <div id="briefing-stat-top" style="font-size: 0.95rem; font-weight: 700; color: var(--warning); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Keine Daten">Keine</div>
+            <div id="briefing-stat-top-count" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem;">0 Teile</div>
           </div>
         </div>
       </div>
@@ -866,7 +873,7 @@
     <div class="card">
       <h2>Datensicherung & Export</h2>
       <p style="color:var(--text-muted); margin-bottom:1rem;">
-        Da die Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
+        Da the Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
       </p>
       <div style="display:flex; gap:1rem; flex-wrap:wrap;">
         <button class="btn" onclick="exportBackup()">⬇️ Backup herunterladen (.json)</button>
@@ -2943,34 +2950,21 @@ function generateBriefingReport() {
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const dateFromEl = document.getElementById("stats-date-from");
   const dateToEl = document.getElementById("stats-date-to");
-  const briefingLabelEl = document.getElementById("briefing-period-label");
 
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
   const dateFrom = dateFromEl ? dateFromEl.value : "";
   const dateTo = dateToEl ? dateToEl.value : "";
 
-  let periodName = "Gesamt";
-  if (dateFrom || dateTo) {
-    periodName = `${dateFrom || 'Anfang'} bis ${dateTo || 'heute'}`;
-  } else if (yearFilter !== "all") {
-    periodName = yearFilter;
-  }
-
-  if (filter === "napo_all") periodName += " (Nr59)";
-  else if (filter === "bre_all") periodName += " (Eichenwacht)";
-  else if (filter !== "all") {
-    const tpls = getTemplates();
-    if (tpls[filter]) periodName += ` (${tpls[filter].name})`;
-  }
-
-  if (briefingLabelEl) briefingLabelEl.textContent = periodName;
-
   const tpls = getTemplates();
   const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo));
+  const filteredTkLogs = (appData.teamkillLogs || []).filter(t => matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo));
 
   let totalEventsCount = filteredProtocols.length;
   let totalPresenceSum = 0;
+  let totalExcusedSum = 0;
+  let totalUnexcusedSum = 0;
+  let totalTeamkillsSum = 0;
   let memberPresenceCounts = {};
 
   filteredProtocols.forEach(p => {
@@ -2979,7 +2973,19 @@ function generateBriefingReport() {
         if (a.status === "present") {
           totalPresenceSum++;
           memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + 1;
+        } else if (a.status === "excused") {
+          totalExcusedSum++;
+        } else if (a.status === "unexcused") {
+          totalUnexcusedSum++;
         }
+      });
+    }
+  });
+
+  filteredTkLogs.forEach(t => {
+    if (t.records) {
+      Object.values(t.records).forEach(r => {
+        totalTeamkillsSum += (parseInt(r.count) || 0);
       });
     }
   });
@@ -3003,7 +3009,11 @@ function generateBriefingReport() {
           if (napoData.members) {
             Object.entries(napoData.members).forEach(([mId, md]) => {
               const pAdd = parseInt(md.present) || 0;
+              const eAdd = parseInt(md.excused) || 0;
+              const uAdd = parseInt(md.unexcused) || 0;
               totalPresenceSum += pAdd;
+              totalExcusedSum += eAdd;
+              totalUnexcusedSum += uAdd;
               memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + pAdd;
             });
           }
@@ -3017,7 +3027,11 @@ function generateBriefingReport() {
           if (breData.members) {
             Object.entries(breData.members).forEach(([mId, md]) => {
               const pAdd = parseInt(md.present) || 0;
+              const eAdd = parseInt(md.excused) || 0;
+              const uAdd = parseInt(md.unexcused) || 0;
               totalPresenceSum += pAdd;
+              totalExcusedSum += eAdd;
+              totalUnexcusedSum += uAdd;
               memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + pAdd;
             });
           }
@@ -3027,32 +3041,61 @@ function generateBriefingReport() {
   }
 
   const avgAttendance = totalEventsCount > 0 ? (totalPresenceSum / totalEventsCount).toFixed(1) : "0.0";
+  const avgExcused = totalEventsCount > 0 ? (totalExcusedSum / totalEventsCount).toFixed(1) : "0.0";
+  const avgUnexcused = totalEventsCount > 0 ? (totalUnexcusedSum / totalEventsCount).toFixed(1) : "0.0";
+  const avgTeamkills = totalEventsCount > 0 ? (totalTeamkillsSum / totalEventsCount).toFixed(1) : "0.0";
 
-  let topMemberName = "Keine Daten";
-  let topMemberCount = 0;
-  
+  let topMembers = [];
+  let maxCount = 0;
+
   const membersMap = {};
   (appData.members || []).forEach(m => membersMap[m.id] = m);
 
   Object.entries(memberPresenceCounts).forEach(([mId, count]) => {
-    if (count > topMemberCount) {
-      topMemberCount = count;
+    if (count > maxCount) {
+      maxCount = count;
       const m = membersMap[mId];
       if (m) {
-        topMemberName = (filter.includes("bre") ? (m.breName || m.napoName) : (m.napoName || m.breName)) || "Unbekannt";
+        const name = (filter.includes("bre") ? (m.breName || m.napoName) : (m.napoName || m.breName)) || "Unbekannt";
+        topMembers = [{ name, count }];
+      }
+    } else if (count === maxCount && count > 0) {
+      const m = membersMap[mId];
+      if (m) {
+        const name = (filter.includes("bre") ? (m.breName || m.napoName) : (m.napoName || m.breName)) || "Unbekannt";
+        if (!topMembers.some(tp => tp.name === name)) {
+          topMembers.push({ name, count });
+        }
       }
     }
   });
 
+  let topMemberText = "Keine Daten";
+  let topMemberCountText = "0 Teile";
+
+  if (topMembers.length > 0) {
+    topMemberText = topMembers.map(t => t.name).join(", ");
+    topMemberCountText = `${maxCount} Teile`;
+  }
+
   const statEventsEl = document.getElementById("briefing-stat-events");
   const statAvgEl = document.getElementById("briefing-stat-avg");
+  const statAvgExcEl = document.getElementById("briefing-stat-avg-exc");
+  const statAvgUnexcEl = document.getElementById("briefing-stat-avg-unexc");
+  const statAvgTkEl = document.getElementById("briefing-stat-avg-tk");
   const statTopEl = document.getElementById("briefing-stat-top");
   const statTopCountEl = document.getElementById("briefing-stat-top-count");
 
   if (statEventsEl) statEventsEl.textContent = totalEventsCount;
   if (statAvgEl) statAvgEl.textContent = avgAttendance;
-  if (statTopEl) statTopEl.textContent = topMemberName;
-  if (statTopCountEl) statTopCountEl.textContent = topMemberCount > 0 ? `${topMemberCount} Teilnahmen` : "Keine Teilnahmen";
+  if (statAvgExcEl) statAvgExcEl.textContent = avgExcused;
+  if (statAvgUnexcEl) statAvgUnexcEl.textContent = avgUnexcused;
+  if (statAvgTkEl) statAvgTkEl.textContent = avgTeamkills;
+  if (statTopEl) {
+    statTopEl.textContent = topMemberText;
+    statTopEl.title = topMemberText;
+  }
+  if (statTopCountEl) statTopCountEl.textContent = topMemberCountText;
 }
 
 initEditor();
