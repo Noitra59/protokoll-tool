@@ -637,13 +637,28 @@
 
       <!-- Regiments-Briefing / Report Box -->
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:0.75rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
           <h3 style="font-size: 1rem; color: var(--text); display:flex; align-items:center; gap:0.5rem; margin:0;">
             <span>📋 Regiments-Briefing & Report (<span id="briefing-period-label">Gesamt</span>)</span>
           </h3>
           <button class="btn btn-secondary btn-sm" onclick="copyBriefingReport()">📋 Report kopieren</button>
         </div>
-        <textarea id="briefing-output" class="bbcode-raw" style="height: 140px; margin-bottom: 0;" readonly></textarea>
+        <div id="briefing-visual-output" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Durchgeführte Events</div>
+            <div id="briefing-stat-events" style="font-size: 1.4rem; font-weight: 800; color: var(--primary);">0</div>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Ø Anwesenheit</div>
+            <div id="briefing-stat-avg" style="font-size: 1.4rem; font-weight: 800; color: var(--success);">0.0</div>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.3rem;">Aktivster Soldat</div>
+            <div id="briefing-stat-top" style="font-size: 1.1rem; font-weight: 700; color: var(--warning); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Keine Daten</div>
+            <div id="briefing-stat-top-count" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.15rem;">0 Teilnahmen</div>
+          </div>
+        </div>
+        <textarea id="briefing-output" style="display:none;"></textarea>
       </div>
 
       <table>
@@ -2915,7 +2930,6 @@ function generateBriefingReport() {
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const briefingLabelEl = document.getElementById("briefing-period-label");
   const briefingOutputEl = document.getElementById("briefing-output");
-  if (!briefingOutputEl) return;
 
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
@@ -3002,7 +3016,7 @@ function generateBriefingReport() {
   const avgAttendance = totalEventsCount > 0 ? (totalPresenceSum / totalEventsCount).toFixed(1) : "0.0";
 
   let topMemberName = "Keine Daten";
-  let topMemberCount = -1;
+  let topMemberCount = 0;
   
   const membersMap = {};
   (appData.members || []).forEach(m => membersMap[m.id] = m);
@@ -3017,13 +3031,25 @@ function generateBriefingReport() {
     }
   });
 
-  let reportText = `📜 Regiments-Briefing & Report — Zeitraum: [b]${periodName}[/b]\n\n`;
-  reportText += `• [b]Durchgeführte Events:[/b] ${totalEventsCount}\n`;
-  reportText += `• [b]Durchschnittliche Anwesenheit:[/b] ${avgAttendance} Spieler pro Event\n`;
-  reportText += `• [b]Aktivster Soldat:[/b] ${topMemberName} (${topMemberCount} Teilnahmen)\n\n`;
-  reportText += `[i]Erstellt mit dem k.k. Protokoll-Manager[/i]`;
+  // Update visual elements
+  const statEventsEl = document.getElementById("briefing-stat-events");
+  const statAvgEl = document.getElementById("briefing-stat-avg");
+  const statTopEl = document.getElementById("briefing-stat-top");
+  const statTopCountEl = document.getElementById("briefing-stat-top-count");
 
-  briefingOutputEl.value = reportText.replace(/\\n/g, '\n');
+  if (statEventsEl) statEventsEl.textContent = totalEventsCount;
+  if (statAvgEl) statAvgEl.textContent = avgAttendance;
+  if (statTopEl) statTopEl.textContent = topMemberName;
+  if (statTopCountEl) statTopCountEl.textContent = topMemberCount > 0 ? `${topMemberCount} Teilnahmen` : "Keine Teilnahmen";
+
+  if (briefingOutputEl) {
+    let reportText = `📜 Regiments-Briefing & Report — Zeitraum: [b]${periodName}[/b]\n\n`;
+    reportText += `• [b]Durchgeführte Events:[/b] ${totalEventsCount}\n`;
+    reportText += `• [b]Durchschnittliche Anwesenheit:[/b] ${avgAttendance} Spieler pro Event\n`;
+    reportText += `• [b]Aktivster Soldat:[/b] ${topMemberName} (${topMemberCount} Teilnahmen)\n\n`;
+    reportText += `[i]Erstellt mit dem k.k. Protokoll-Manager[/i]`;
+    briefingOutputEl.value = reportText.replace(/\\n/g, '\n');
+  }
 }
 
 function copyBriefingReport() {
