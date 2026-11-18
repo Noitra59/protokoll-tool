@@ -504,6 +504,31 @@
 
           <div id="tk-member-list"></div>
         </div>
+
+        <!-- MITGLIEDER-TEAMKILL-HISTORIE (UNTER TEAMKILLS ERFASSEN AUF DER LINKEN SEITE) -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">Mitglieder-Teamkill-Historie</h2>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <select id="tk-member-history-select" onchange="renderMemberTkHistory()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;"></select>
+            </div>
+          </div>
+          <div style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted);" id="tk-member-total-info">
+            Gesamt Teamkills: <strong>0</strong>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Event</th>
+                <th style="color:var(--danger);">Teamkills</th>
+              </tr>
+            </thead>
+            <tbody id="tk-member-history-body">
+              <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte Mitglied auswählen.</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div>
@@ -574,36 +599,11 @@
           </table>
         </div>
 
-        <!-- NEU: MITGLIEDER-TEAMKILL-HISTORIE -->
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
-            <h2 style="border:none; margin:0; padding:0;">Mitglieder-Teamkill-Historie</h2>
-            <div style="display:flex; gap:0.5rem; align-items:center;">
-              <select id="tk-member-history-select" onchange="renderMemberTkHistory()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;"></select>
-            </div>
-          </div>
-          <div style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted);" id="tk-member-total-info">
-            Gesamt Teamkills: <strong>0</strong>
-          </div>
-          <table>
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Event</th>
-                <th style="color:var(--danger);">Teamkills</th>
-              </tr>
-            </thead>
-            <tbody id="tk-member-history-body">
-              <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte Mitglied auswählen.</td></tr>
-            </tbody>
-          </table>
-        </div>
-
         <!-- EINGEKLAPPTE GESPEICHERTE TEAMKILL-EINTRÄGE -->
-        <details class="card" style="background: rgba(28, 31, 36, 0.7);">
+        <details class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onTkHistoryDetailsToggle(this)">
           <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
             <span>📁 Gespeicherte Teamkill-Einträge verwalten</span>
-            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
+            <span id="tk-history-summary-toggle-text" style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
           </summary>
           
           <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
@@ -3283,6 +3283,17 @@ function renderMemberTkHistory() {
 
   if (infoEl) {
     infoEl.innerHTML = `Gesamt Teamkills: <strong style="color:var(--danger);">${totalTK}</strong>`;
+  }
+}
+
+
+function onTkHistoryDetailsToggle(detailsEl) {
+  const toggleText = document.getElementById("tk-history-summary-toggle-text");
+  if (!toggleText) return;
+  if (detailsEl.open) {
+    toggleText.textContent = "Klicken zum Einklappen";
+  } else {
+    toggleText.textContent = "Klicken zum Aufklappen";
   }
 }
 
