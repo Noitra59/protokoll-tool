@@ -547,8 +547,7 @@
           <div style="display:flex; gap:0.4rem; align-items:center;">
             <label style="margin:0;">Format:</label>
             <select id="stats-filter" onchange="renderStats(); renderStatsChart();" style="width:auto;">
-              <option value="all">Alle Events gesamt</option>
-              <option value="napo_all">Alle Nr59-Events</option>
+              <option value="all">Alle Nr59-Events gesamt</option>
             </select>
           </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -574,7 +573,7 @@
       <table>
         <thead>
           <tr>
-            <th>Mitglied (Nr59 / Eichenwacht)</th>
+            <th>Mitglied (Nr59)</th>
             <th>Einheit</th>
             <th>Erfasste Events</th>
             <th style="color:var(--success);">Anwesend</th>
@@ -966,7 +965,7 @@ function updateTkFormatDropdown() {
   
   const tpls = getTemplates();
   for (const [key, cfg] of Object.entries(tpls)) {
-    if (cfg.trackTeamkills !== false) {
+    if (cfg.trackTeamkills !== false && cfg.unit === "napo") {
       const opt = document.createElement("option");
       opt.value = key;
       opt.textContent = cfg.name;
@@ -984,16 +983,17 @@ function updateStatsFilterDropdown() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = `
-    <option value="all">Alle Events gesamt</option>
-    <option value="napo_all">Alle Nr59-Events</option>
+    <option value="all">Alle Nr59-Events gesamt</option>
   `;
 
   const tpls = getTemplates();
   for (const [key, cfg] of Object.entries(tpls)) {
-    const opt = document.createElement("option");
-    opt.value = key;
-    opt.textContent = `Nur ${cfg.name}`;
-    select.appendChild(opt);
+    if (cfg.unit === "napo") {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = `Nur ${cfg.name}`;
+      select.appendChild(opt);
+    }
   }
 
   if (select.querySelector(`option[value="${currentVal}"]`)) {
@@ -1006,11 +1006,11 @@ function updateTkStatsFilterDropdown() {
   if (!select) return;
   const currentVal = select.value;
   
-  select.innerHTML = `<option value="all">Alle Events</option>`;
+  select.innerHTML = `<option value="all">Alle Nr59-Events</option>`;
 
   const tpls = getTemplates();
   for (const [key, cfg] of Object.entries(tpls)) {
-    if (cfg.trackTeamkills !== false) {
+    if (cfg.trackTeamkills !== false && cfg.unit === "napo") {
       const opt = document.createElement("option");
       opt.value = key;
       opt.textContent = cfg.name;
@@ -1025,14 +1025,18 @@ function updateTkStatsFilterDropdown() {
 
 function updateStatsYearDropdown() {
   const years = new Set();
+  const tpls = getTemplates();
+  
   (appData.protocols || []).forEach(p => {
-    if (p.date) {
+    const cfg = tpls[p.format];
+    if (p.date && cfg && cfg.unit === "napo") {
       const year = p.date.split("-")[0];
       if (year) years.add(year);
     }
   });
   (appData.teamkillLogs || []).forEach(t => {
-    if (t.date) {
+    const cfg = tpls[t.format];
+    if (t.date && cfg && cfg.unit === "napo") {
       const year = t.date.split("-")[0];
       if (year) years.add(year);
     }
@@ -1219,7 +1223,7 @@ function setMemberNote(id, note) {
 }
 
 // ==========================================
-// TEAMKILLS TAB LOGIK & STATISTIK
+// TEAMKILLS TAB LOGIK & STATISTIK (Nur Nr59)
 // ==========================================
 function onTkFormatChange() {
   loadExistingTkForDate();
@@ -1266,15 +1270,15 @@ function renderTkList() {
     return;
   }
 
-  const unit = cfg.unit;
-  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+  // Nur Nr59 Mitglieder anzeigen
+  const relevantMembers = (appData.members || []).filter(m => m.active && m.inNapo);
 
   relevantMembers.forEach(m => {
     if (!currentTkInputs[m.id]) {
       currentTkInputs[m.id] = { count: 0 };
     }
     const val = currentTkInputs[m.id];
-    const displayName = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+    const displayName = m.napoName || "";
 
     const row = document.createElement("div");
     row.className = "tk-row";
@@ -1348,13 +1352,19 @@ function renderTkHistory() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  if (!appData.teamkillLogs || appData.teamkillLogs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Noch keine Teamkills erfasst.</td></tr>`;
+  const tpls = getTemplates();
+  // Nur Teamkill-Logs für Nr59 anzeigen
+  const napoLogs = (appData.teamkillLogs || []).filter(log => {
+    const cfg = tpls[log.format];
+    return cfg && cfg.unit === "napo";
+  });
+
+  if (napoLogs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Noch keine Nr59-Teamkills erfasst.</td></tr>`;
     return;
   }
 
-  const tpls = getTemplates();
-  appData.teamkillLogs.forEach(log => {
+  napoLogs.forEach(log => {
     const cfg = tpls[log.format];
     let sumTK = 0;
     if (log.records) {
@@ -1389,33 +1399,38 @@ function renderTkRecords() {
   const playerValEl = document.getElementById("record-player-val");
   const playerDetailsEl = document.getElementById("record-player-details");
 
+  const tpls = getTemplates();
+  // Nur Teamkill-Logs für Nr59 im gewählten Jahr
   const logs = (appData.teamkillLogs || []).filter(l => {
+    const cfg = tpls[l.format];
+    if (!cfg || cfg.unit !== "napo") return false;
     if (selectedYear === "all") return true;
     return l.date && l.date.split("-")[0] === selectedYear;
   });
 
-  const tpls = getTemplates();
   const membersMap = {};
-  (appData.members || []).forEach(m => membersMap[m.id] = m);
+  (appData.members || []).filter(m => m.inNapo).forEach(m => membersMap[m.id] = m);
 
   let totalRegimentTK = 0;
   let maxEventTK = -1;
-  let bestEventLogs = []; // Array für Gleichstände
+  let bestEventLogs = [];
 
   let maxPlayerTK = -1;
-  let bestPlayers = []; // Array für Spieler-Gleichstände
+  let bestPlayers = [];
 
   logs.forEach(log => {
     let eventSum = 0;
+    const cfg = tpls[log.format];
+    const eventName = cfg ? cfg.name : log.format;
+
     if (log.records) {
       for (const [mId, rec] of Object.entries(log.records)) {
+        if (!membersMap[mId]) continue; // Nur Nr59-Mitglieder berücksichtigen
         const c = parseInt(rec.count) || 0;
         eventSum += c;
         totalRegimentTK += c;
 
-        const cfg = tpls[log.format];
-        const eventName = cfg ? cfg.name : log.format;
-        const playerName = membersMap[mId] ? [membersMap[mId].napoName, membersMap[mId].breName].filter(Boolean).join(" / ") : "Unbekannt";
+        const playerName = membersMap[mId].napoName || "Unbekannt";
         const dateStr = formatGermanDate(log.date);
 
         if (c > maxPlayerTK) {
@@ -1437,7 +1452,6 @@ function renderTkRecords() {
     }
   });
 
-  // 1. Regiments-Durchschnitt pro Event
   if (logs.length > 0) {
     const avg = (totalRegimentTK / logs.length).toFixed(2);
     avgValEl.textContent = `${avg} TKs`;
@@ -1447,7 +1461,6 @@ function renderTkRecords() {
     avgDetailsEl.textContent = "Keine Daten";
   }
 
-  // 2. Regiments-Rekord (inkl. Gleichstand)
   if (bestEventLogs.length > 0 && maxEventTK > 0) {
     regValEl.textContent = `${maxEventTK} TKs`;
     let detailsHtml = "";
@@ -1463,7 +1476,6 @@ function renderTkRecords() {
     regDetailsEl.textContent = "Keine Daten";
   }
 
-  // 3. Einzelspieler-Rekord (inkl. Gleichstand)
   if (bestPlayers.length > 0 && maxPlayerTK > 0) {
     playerValEl.textContent = `${maxPlayerTK} TKs`;
     let detailsHtml = "";
@@ -1488,12 +1500,20 @@ function renderTkStats() {
   const filter = tkStatsFilterEl ? tkStatsFilterEl.value : "all";
   const yearFilter = tkStatsYearFilterEl ? tkStatsYearFilterEl.value : "all";
 
-  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
-  const filteredTkLogs = (appData.teamkillLogs || []).filter(t => matchesStatsFilters(t, filter, yearFilter));
+  const tpls = getTemplates();
+  const filteredProtocols = (appData.protocols || []).filter(p => {
+    const cfg = tpls[p.format];
+    return cfg && cfg.unit === "napo" && matchesStatsFilters(p, filter, yearFilter);
+  });
+  const filteredTkLogs = (appData.teamkillLogs || []).filter(t => {
+    const cfg = tpls[t.format];
+    return cfg && cfg.unit === "napo" && matchesStatsFilters(t, filter, yearFilter);
+  });
 
   const memberStats = [];
 
-  (appData.members || []).forEach(m => {
+  // Nur Nr59 Mitglieder
+  (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, totalTK = 0;
 
     filteredProtocols.forEach(p => {
@@ -1512,7 +1532,7 @@ function renderTkStats() {
       }
     });
 
-    if (total === 0 && totalTK === 0 && !m.active) return;
+    if (total === 0 && totalTK === 0) return;
 
     const tkPerEvent = pres > 0 ? (totalTK / pres).toFixed(2) : (total > 0 ? (totalTK / total).toFixed(2) : "0.00");
     memberStats.push({ member: m, pres, totalTK, tkPerEvent });
@@ -1522,12 +1542,8 @@ function renderTkStats() {
 
   memberStats.forEach(item => {
     const m = item.member;
-    const nameLabel = [m.napoName, m.breName].filter(Boolean).join(" / ");
-    
-    let unitBadges = "";
-    if (m.inNapo) unitBadges += `<span class="badge badge-napo">Nr59</span> `;
-    if (m.inBre) unitBadges += `<span class="badge badge-bre">Eichenwacht</span> `;
-    if (!m.active) unitBadges += `<span class="badge badge-inactive">Inaktiv</span>`;
+    const nameLabel = m.napoName || "";
+    const unitBadges = `<span class="badge badge-napo">Nr59</span>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -1838,11 +1854,11 @@ async function deleteProtocol(id) {
 }
 
 // ==========================================
-// STATISTIKEN & DIAGRAMM
+// STATISTIKEN & DIAGRAMM (Nur Nr59)
 // ==========================================
 function matchesStatsFilters(item, filter, yearFilter) {
   let matchesEvent = true;
-  if (filter !== "all") {
+  if (filter !== "all" && filter !== "napo_all") {
     matchesEvent = (item.format === filter);
   }
 
@@ -1865,9 +1881,16 @@ function renderStats() {
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
-  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+  const tpls = getTemplates();
+  // Nur Nr59 Protokolle einbeziehen
+  const filteredProtocols = (appData.protocols || []).filter(p => {
+    const cfg = tpls[p.format];
+    if (!cfg || cfg.unit !== "napo") return false;
+    return matchesStatsFilters(p, filter, yearFilter);
+  });
 
-  (appData.members || []).forEach(m => {
+  // Nur aktive Nr59 Mitglieder auflisten
+  (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, exc = 0, unexc = 0;
 
     filteredProtocols.forEach(p => {
@@ -1880,15 +1903,11 @@ function renderStats() {
       }
     });
 
-    if (total === 0 && !m.active) return;
+    if (total === 0) return;
     
     const rate = total > 0 ? Math.round((pres / total) * 100) : 0;
-    const nameLabel = [m.napoName, m.breName].filter(Boolean).join(" / ");
-    
-    let unitBadges = "";
-    if (m.inNapo) unitBadges += `<span class="badge badge-napo">Nr59</span> `;
-    if (m.inBre) unitBadges += `<span class="badge badge-bre">Eichenwacht</span> `;
-    if (!m.active) unitBadges += `<span class="badge badge-inactive">Inaktiv</span>`;
+    const nameLabel = m.napoName || "";
+    const unitBadges = `<span class="badge badge-napo">Nr59</span>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
@@ -1929,13 +1948,19 @@ function renderStatsChart() {
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
+  const tpls = getTemplates();
   const protocols = [...(appData.protocols || [])]
-    .filter(p => matchesStatsFilters(p, filter, yearFilter))
+    .filter(p => {
+      const cfg = tpls[p.format];
+      if (!cfg || cfg.unit !== "napo") return false;
+      return matchesStatsFilters(p, filter, yearFilter);
+    })
     .sort((a, b) => a.date.localeCompare(b.date));
 
   const tkMap = {};
   (appData.teamkillLogs || []).forEach(t => {
-    if (matchesStatsFilters(t, filter, yearFilter)) {
+    const cfg = tpls[t.format];
+    if (cfg && cfg.unit === "napo" && matchesStatsFilters(t, filter, yearFilter)) {
       let sumTK = 0;
       if (t.records) {
         Object.values(t.records).forEach(r => sumTK += (parseInt(r.count) || 0));
@@ -1948,7 +1973,7 @@ function renderStatsChart() {
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Keine Daten im gewählten Zeitraum vorhanden", rect.width / 2, rect.height / 2);
+    ctx.fillText("Keine Nr59-Daten im gewählten Zeitraum vorhanden", rect.width / 2, rect.height / 2);
     return;
   }
 
