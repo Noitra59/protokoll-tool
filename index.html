@@ -180,7 +180,7 @@
   .radio-pill input[value="excused"]:checked + span { background: rgba(245, 158, 11, 0.2); border-color: var(--warning); color: var(--warning); }
   .radio-pill input[value="unexcused"]:checked + span { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
 
-  /* Rekord-Boxen (3 Spalten) mit einheitlicher Höhe */
+  /* Perfekt ausgerichtete Rekord-Boxen */
   .record-box-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; align-items: stretch; }
   @media (max-width: 900px) { .record-box-grid { grid-template-columns: 1fr; } }
   .record-box {
@@ -193,10 +193,21 @@
     flex-direction: column;
     justify-content: space-between;
   }
+  .record-top-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .record-bottom-section {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
   .record-emoji-large { font-size: 1.8rem; line-height: 1.2; margin-bottom: 0.15rem; }
   .record-box h3 { font-size: 0.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0.2rem; }
-  .record-details { font-size: 0.82rem; color: var(--text); margin-top: auto; }
+  .record-details { font-size: 0.82rem; color: var(--text); }
 
   /* Chart Container */
   .chart-container {
@@ -477,25 +488,31 @@
           </div>
           <div class="record-box-grid">
             <div class="record-box">
-              <div class="record-emoji-large">Ø</div>
-              <h3>Regiments-Durchschnitt</h3>
-              <div>
+              <div class="record-top-section">
+                <div class="record-emoji-large">Ø</div>
+                <h3>Regiments-Durchschnitt</h3>
+              </div>
+              <div class="record-bottom-section">
                 <div id="record-avg-val" class="record-value">0.0 TKs</div>
                 <div id="record-avg-details" class="record-details">Pro Event</div>
               </div>
             </div>
             <div class="record-box">
-              <div class="record-emoji-large">💂‍♂️💂‍♂️💂‍♂️</div>
-              <h3>Regiments-Rekord</h3>
-              <div>
+              <div class="record-top-section">
+                <div class="record-emoji-large">💂‍♂️💂‍♂️💂‍♂️</div>
+                <h3>Regiments-Rekord</h3>
+              </div>
+              <div class="record-bottom-section">
                 <div id="record-reg-val" class="record-value">0 TKs</div>
                 <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
               </div>
             </div>
             <div class="record-box">
-              <div class="record-emoji-large">💀</div>
-              <h3>Einzelspieler-Rekord</h3>
-              <div>
+              <div class="record-top-section">
+                <div class="record-emoji-large">💀</div>
+                <h3>Einzelspieler-Rekord</h3>
+              </div>
+              <div class="record-bottom-section">
                 <div id="record-player-val" class="record-value">0 TKs</div>
                 <div id="record-player-details" class="record-details">Max. an einem Event</div>
               </div>
