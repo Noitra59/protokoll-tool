@@ -242,7 +242,7 @@
   th { color: var(--text-muted); font-weight: 600; background: rgba(0,0,0,0.2); }
   tr:hover td { background: var(--surface-hover); }
 
-  /* Neue Template & Einheiten Badges nach Wunsch */
+  /* Badges */
   .badge {
     display: inline-block;
     padding: 0.2rem 0.5rem;
@@ -253,7 +253,7 @@
   .badge-event { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
   .badge-training { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
   .badge-napo { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); } /* Gelborange */
-  .badge-bre { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); } /* Grün */
+  .badge-bre { background: rgba(5, 150, 105, 0.22); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.45); } /* Dunkleres Grün */
   .badge-inactive { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
 
   .toast {
@@ -285,8 +285,8 @@
   </div>
   <nav>
     <button class="active" onclick="switchTab('editor', this)">Protokoll</button>
-    <button onclick="switchTab('teamkills', this)">Teamkills</button>
     <button onclick="switchTab('history', this)">Verlauf (<span id="nav-history-count">0</span>)</button>
+    <button onclick="switchTab('teamkills', this)">Teamkills</button>
     <button onclick="switchTab('stats', this)">Statistiken</button>
     <button onclick="switchTab('members', this)">Mitgliederliste</button>
     <button onclick="switchTab('templates', this)">Templates</button>
@@ -406,14 +406,34 @@
           <label>BBCode zum Kopieren (inkl. [b], [color], Summen):</label>
           <textarea id="bbcode-output" class="bbcode-raw" readonly></textarea>
 
-          <label style="margin-top:1rem;">Live-Vorschau (wie im Forum):</label>
+          <label style="margin-top:1rem;">Live-Vorschau:</label>
           <div id="html-preview" class="preview-box"></div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- TAB 2: TEAMKILLS -->
+  <!-- TAB 2: VERLAUF -->
+  <div id="tab-history" class="tab-content">
+    <div class="card">
+      <h2>Gespeicherte Protokolle (Gemeinsamer Verlauf)</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Format / Event</th>
+            <th>Anwesend</th>
+            <th>Abgemeldet</th>
+            <th>Fehlend</th>
+            <th>Aktionen</th>
+          </tr>
+        </thead>
+        <tbody id="history-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: TEAMKILLS -->
   <div id="tab-teamkills" class="tab-content">
     <div class="grid-2">
       <div>
@@ -512,26 +532,6 @@
           </table>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- TAB 3: VERLAUF -->
-  <div id="tab-history" class="tab-content">
-    <div class="card">
-      <h2>Gespeicherte Protokolle (Gemeinsamer Verlauf)</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Datum</th>
-            <th>Format / Event</th>
-            <th>Anwesend</th>
-            <th>Abgemeldet</th>
-            <th>Fehlend</th>
-            <th>Aktionen</th>
-          </tr>
-        </thead>
-        <tbody id="history-table-body"></tbody>
-      </table>
     </div>
   </div>
 
@@ -677,7 +677,7 @@
         </div>
         <div class="form-group">
           <label>Standard-Leiter / Offizier</label>
-          <input type="text" id="new-tpl-leader" value="Oberst Darthkiller">
+          <input type="text" id="new-tpl-leader" value="Oberst Darthkiller, Oberst Lama">
         </div>
       </div>
       <div class="grid-2" style="gap: 0.75rem;">
@@ -2231,7 +2231,7 @@ function cancelEditTemplate() {
   document.getElementById("new-tpl-prefix").value = "k.k. Protokoll des Events am";
   document.getElementById("new-tpl-unit").value = "napo";
   document.getElementById("new-tpl-is-training").value = "false";
-  document.getElementById("new-tpl-leader").value = "Oberst Darthkiller";
+  document.getElementById("new-tpl-leader").value = "Oberst Darthkiller, Oberst Lama";
   document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
   document.getElementById("new-tpl-troop").value = "Linieninfanterie";
   document.getElementById("new-tpl-track-tk").checked = false;
