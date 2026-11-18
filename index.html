@@ -1431,7 +1431,7 @@ function onFormatChange(resetFields = true) {
     if (summaryEl) summaryEl.value = "";
   }
 
-  if (resetFields && editProtoId && !editProtoId.value) {
+  if (editProtoId && !editProtoId.value) {
     currentAttendance = {};
     const unit = cfg.unit;
     (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
