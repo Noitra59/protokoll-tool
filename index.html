@@ -512,20 +512,27 @@
           </table>
         </div>
 
-        <div class="card">
-          <h2>Gespeicherte Teamkill-Einträge</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Datum</th>
-                <th>Event</th>
-                <th>Gesamt-TKs</th>
-                <th>Aktionen</th>
-              </tr>
-            </thead>
-            <tbody id="tk-history-body"></tbody>
-          </table>
-        </div>
+        <!-- EINGEKLAPPTE GESPEICHERTE TEAMKILL-EINTRÄGE -->
+        <details class="card" style="background: rgba(28, 31, 36, 0.7);">
+          <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
+            <span>📁 Gespeicherte Teamkill-Einträge verwalten</span>
+            <span style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
+          </summary>
+          
+          <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Datum</th>
+                  <th>Event</th>
+                  <th>Gesamt-TKs</th>
+                  <th>Aktionen</th>
+                </tr>
+              </thead>
+              <tbody id="tk-history-body"></tbody>
+            </table>
+          </div>
+        </details>
       </div>
     </div>
   </div>
@@ -1425,16 +1432,28 @@ function renderTkHistory() {
   }
 
   napoLogs.forEach(log => {
-    const cfg = tpls[log.format];
     let sumTK = 0;
     if (log.records) {
       Object.values(log.records).forEach(r => sumTK += (parseInt(r.count) || 0));
     }
 
+    // Dropdown mit allen verfügbaren Nr59-Events
+    let formatOptions = "";
+    for (const [key, cfg] of Object.entries(tpls)) {
+      if (cfg.trackTeamkills !== false && cfg.unit === "napo") {
+        const selected = (log.format === key) ? "selected" : "";
+        formatOptions += `<option value="${key}" ${selected}>${cfg.name}</option>`;
+      }
+    }
+
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${formatGermanDate(log.date)}</strong></td>
-      <td>${cfg ? cfg.name : log.format}</td>
+      <td>
+        <select onchange="updateTkLogFormat('${log.id}', this.value)" style="padding:0.35rem 0.5rem; font-size:0.85rem; width:100%;">
+          ${formatOptions}
+        </select>
+      </td>
       <td style="color:var(--danger); font-weight:700;">${sumTK}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm" onclick="editTkLog('${log.id}')">✏️ Laden</button>
@@ -1443,6 +1462,18 @@ function renderTkHistory() {
     `;
     tbody.appendChild(tr);
   });
+}
+
+async function updateTkLogFormat(logId, newFormat) {
+  const log = (appData.teamkillLogs || []).find(t => t.id === logId);
+  if (!log) return;
+  log.format = newFormat;
+  await saveToCloud();
+  renderTkHistory();
+  renderTkStats();
+  renderTkRecords();
+  renderStatsChart();
+  showToast("Event für Teamkill-Eintrag aktualisiert.");
 }
 
 function renderTkRecords() {
