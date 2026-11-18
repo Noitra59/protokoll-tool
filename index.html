@@ -197,22 +197,20 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    /* Feste Mindesthöhe damit die zweizeiligen Überschriften perfekt auf einer Höhe stehen */
-    min-height: 85px;
+    min-height: 90px; /* Einheitlicher Bereich für Symbole + Überschriften */
     justify-content: flex-start;
   }
   .record-middle-section {
-    /* Fester Bereich für die rote Zahl, damit diese über allen Boxen perfekt auf einer Linie liegt */
-    min-height: 55px;
+    min-height: 55px; /* Einheitlicher Bereich für die roten Zahlen */
     display: flex;
     flex-direction: column;
     justify-content: center;
   }
   .record-bottom-section {
-    margin-top: auto;
+    margin-top: 0;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
   .record-emoji-large { font-size: 1.8rem; line-height: 1.2; margin-bottom: 0.15rem; }
   .record-box h3 { font-size: 0.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0; }
@@ -623,7 +621,6 @@
           <tr>
             <th class="sortable" onclick="sortStatsTable('name')">Mitglied (Nr59) <span id="sort-ind-stats-name"></span></th>
             <th class="sortable" onclick="sortStatsTable('unit')">Einheit <span id="sort-ind-stats-unit"></span></th>
-            <th class="sortable" onclick="sortStatsTable('total')">Erfasste Events <span id="sort-ind-stats-total"></span></th>
             <th class="sortable" style="color:var(--success);" onclick="sortStatsTable('pres')">Anwesend <span id="sort-ind-stats-pres"></span></th>
             <th class="sortable" style="color:var(--warning);" onclick="sortStatsTable('exc')">Abgemeldet <span id="sort-ind-stats-exc"></span></th>
             <th class="sortable" style="color:var(--danger);" onclick="sortStatsTable('unexc')">Unentschuldigt <span id="sort-ind-stats-unexc"></span></th>
@@ -1461,7 +1458,7 @@ async function saveTeamkillLog() {
     }
   }
 
-  if (!appData.teamkillLogs) appData.teamkillLogs = {};
+  if (!appData.teamkillLogs) appData.teamkillLogs = [];
 
   const existingIdx = appData.teamkillLogs.findIndex(t => t.id === editId || (t.format === fmt && t.date === date));
 
@@ -1583,7 +1580,6 @@ function renderTkRecords() {
   let maxPlayerTK = -1;
   let bestPlayers = [];
 
-  // Berechnung nach Format aufschlüsseln für den Durchschnitt
   const formatTotals = {};
 
   logs.forEach(log => {
@@ -2181,7 +2177,7 @@ function renderStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  ['name', 'unit', 'total', 'pres', 'exc', 'unexc', 'rate'].forEach(c => {
+  ['name', 'unit', 'pres', 'exc', 'unexc', 'rate'].forEach(c => {
     const ind = document.getElementById(`sort-ind-stats-${c}`);
     if (ind) {
       if (statsSortCol === c) {
@@ -2287,9 +2283,6 @@ function renderStats() {
         valA = (a.member.inNapo ? "Nr59" : "") + (a.member.inBre ? "Eichenwacht" : "");
         valB = (b.member.inNapo ? "Nr59" : "") + (b.member.inBre ? "Eichenwacht" : "");
         return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      } else if (statsSortCol === 'total') {
-        valA = a.total;
-        valB = b.total;
       } else if (statsSortCol === 'pres') {
         valA = a.pres;
         valB = b.pres;
@@ -2314,7 +2307,6 @@ function renderStats() {
     tr.innerHTML = `
       <td><strong>${item.nameLabel}</strong></td>
       <td>${item.unitBadges}</td>
-      <td>${item.total}</td>
       <td style="color:var(--success); font-weight:700;">${item.pres}</td>
       <td style="color:var(--warning);">${item.exc}</td>
       <td style="color:var(--danger);">${item.unexc}</td>
