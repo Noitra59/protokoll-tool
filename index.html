@@ -473,17 +473,17 @@
           </div>
           <div class="record-box-grid">
             <div class="record-box">
-              <h3>Regiments-Durchschnitt</h3>
+              <h3>📊 Regiments-Durchschnitt</h3>
               <div id="record-avg-val" class="record-value">0.0 TKs</div>
               <div id="record-avg-details" class="record-details">Pro Event</div>
             </div>
             <div class="record-box">
-              <h3>Regiments-Rekord</h3>
+              <h3>💂‍♂️💂‍♂️💂‍♂️ Regiments-Rekord</h3>
               <div id="record-reg-val" class="record-value">0 TKs</div>
               <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
             </div>
             <div class="record-box">
-              <h3>Einzelspieler-Rekord</h3>
+              <h3>💀 Einzelspieler-Rekord</h3>
               <div id="record-player-val" class="record-value">0 TKs</div>
               <div id="record-player-details" class="record-details">Max. an einem Event</div>
             </div>
@@ -495,8 +495,7 @@
             <h2 style="border:none; margin:0; padding:0;">Teamkill-Statistik</h2>
             <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
               <select id="tk-stats-filter" onchange="renderTkStats()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
-                <option value="all">Alle Events</option>
-                <option value="napo_all">Alle Nr59-Events</option>
+                <!-- Wird dynamisch mit TK-Events befüllt -->
               </select>
               <select id="tk-stats-year-filter" onchange="onTkYearFilterChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
                 <option value="all">Alle Jahre</option>
@@ -838,6 +837,7 @@ async function loadFromCloud(manual = false) {
   updateFormatDropdown();
   updateTkFormatDropdown();
   updateStatsFilterDropdown();
+  updateTkStatsFilterDropdown();
   updateStatsYearDropdown();
   updateHistoryBadge();
   renderAttendanceList();
@@ -897,7 +897,7 @@ function switchTab(tabId, btnElement) {
 
   if (tabId === "teamkills") {
     updateTkFormatDropdown();
-    updateStatsFilterDropdown();
+    updateTkStatsFilterDropdown();
     updateStatsYearDropdown();
     loadExistingTkForDate();
     renderTkHistory();
@@ -976,32 +976,47 @@ function updateTkFormatDropdown() {
 }
 
 function updateStatsFilterDropdown() {
-  const selectors = [
-    document.getElementById("stats-filter"),
-    document.getElementById("tk-stats-filter")
-  ];
+  const select = document.getElementById("stats-filter");
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = `
+    <option value="all">Alle Events gesamt</option>
+    <option value="napo_all">Alle Nr59-Events</option>
+  `;
 
   const tpls = getTemplates();
+  for (const [key, cfg] of Object.entries(tpls)) {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `Nur ${cfg.name}`;
+    select.appendChild(opt);
+  }
 
-  selectors.forEach(select => {
-    if (!select) return;
-    const currentVal = select.value;
-    select.innerHTML = `
-      <option value="all">Alle Events gesamt</option>
-      <option value="napo_all">Alle Nr59-Events</option>
-    `;
+  if (select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  }
+}
 
-    for (const [key, cfg] of Object.entries(tpls)) {
+function updateTkStatsFilterDropdown() {
+  const select = document.getElementById("tk-stats-filter");
+  if (!select) return;
+  const currentVal = select.value;
+  
+  select.innerHTML = `<option value="all">Alle Events (mit TKs)</option>`;
+
+  const tpls = getTemplates();
+  for (const [key, cfg] of Object.entries(tpls)) {
+    if (cfg.trackTeamkills !== false) {
       const opt = document.createElement("option");
       opt.value = key;
-      opt.textContent = `Nur ${cfg.name}`;
+      opt.textContent = cfg.name;
       select.appendChild(opt);
     }
+  }
 
-    if (select.querySelector(`option[value="${currentVal}"]`)) {
-      select.value = currentVal;
-    }
-  });
+  if (select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  }
 }
 
 function updateStatsYearDropdown() {
@@ -1811,10 +1826,7 @@ async function deleteProtocol(id) {
 // ==========================================
 function matchesStatsFilters(item, filter, yearFilter) {
   let matchesEvent = true;
-  if (filter === "napo_all") {
-    const tpls = getTemplates();
-    matchesEvent = tpls[item.format] && tpls[item.format].unit === "napo";
-  } else if (filter !== "all") {
+  if (filter !== "all") {
     matchesEvent = (item.format === filter);
   }
 
@@ -2194,6 +2206,7 @@ async function saveTemplate() {
   updateFormatDropdown();
   updateTkFormatDropdown();
   updateStatsFilterDropdown();
+  updateTkStatsFilterDropdown();
   renderTemplatesTable();
   onFormatChange();
   await saveToCloud();
@@ -2255,6 +2268,7 @@ async function deleteTemplate(key) {
     updateFormatDropdown();
     updateTkFormatDropdown();
     updateStatsFilterDropdown();
+    updateTkStatsFilterDropdown();
     renderTemplatesTable();
     onFormatChange();
     await saveToCloud();
