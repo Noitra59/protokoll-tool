@@ -501,9 +501,7 @@
             </div>
           </div>
 
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
-            Hier kannst du parallel zur Protokollerstellung die Teamkills für das ausgewählte Event eintragen.
-          </p>
+
 
           <div id="tk-member-list"></div>
         </div>
@@ -1230,18 +1228,14 @@ function resetEditorMode() {
 function updateTkEditorModeIndicator() {
   const editId = document.getElementById("edit-tk-id").value;
   const banner = document.getElementById("tk-mode-banner");
-  const cancelBtn = document.getElementById("btn-cancel-tk-edit");
   if (!banner) return;
 
   if (editId) {
     banner.className = "mode-indicator edit";
-    banner.innerHTML = `<span>✏️ Modus: Vorhandener Teamkill-Eintrag wird bearbeitet</span>`;
-    banner.appendChild(cancelBtn);
-    cancelBtn.style.display = "inline-block";
+    banner.innerHTML = `<span>✏️ Modus: Vorhandener Teamkill-Eintrag wird bearbeitet</span><button class="btn btn-sm btn-secondary" id="btn-cancel-tk-edit" onclick="resetTkEditorMode()">Abbrechen</button>`;
   } else {
     banner.className = "mode-indicator new";
-    banner.innerHTML = `<span>✨ Modus: Neue Teamkills erfassen</span>`;
-    cancelBtn.style.display = "none";
+    banner.innerHTML = `<span>✨ Modus: Neue Teamkills erfassen</span><button class="btn btn-sm btn-secondary" id="btn-cancel-tk-edit" style="display:none;" onclick="resetTkEditorMode()">Abbrechen</button>`;
   }
 }
 
