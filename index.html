@@ -540,7 +540,9 @@
           <div style="display:flex; gap:0.4rem; align-items:center;">
             <label style="margin:0;">Format:</label>
             <select id="stats-filter" onchange="renderStats(); renderStatsChart();" style="width:auto;">
-              <option value="all">Alle Nr59-Events gesamt</option>
+              <option value="all">Alle Events gesamt</option>
+              <option value="napo_all">Alle Nr59-Events</option>
+              <option value="bre_all">Alle Eichenwacht-Events</option>
             </select>
           </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -588,12 +590,25 @@
       
       <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
-          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
-            Hier kannst du für ein Jahr zusätzliche Anwesenheiten, Abmeldungen oder Fehltage pro Mitglied eintragen (wird auf die obige Statistik addiert).
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0; max-width: 550px;">
+            Trage für ein Jahr und eine Einheit (Nr59 oder Eichenwacht) die Gesamteventanzahl sowie die einzelnen Teilnahmen nach, damit die Anwesenheitsquote korrekt berechnet wird.
           </p>
-          <div style="display:flex; gap:0.5rem; align-items:center;">
-            <label style="margin:0;">Jahr:</label>
-            <input type="number" id="manual-att-year" min="2020" max="2099" value="2026" onchange="renderManualAttendanceList()" style="width:95px; padding:0.35rem 0.5rem;">
+          <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+            <div style="display:flex; gap:0.35rem; align-items:center;">
+              <label style="margin:0;">Einheit:</label>
+              <select id="manual-att-unit" onchange="renderManualAttendanceList()" style="width:auto; padding:0.35rem 0.5rem;">
+                <option value="napo">Nr59</option>
+                <option value="bre">Eichenwacht</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:0.35rem; align-items:center;">
+              <label style="margin:0;">Jahr:</label>
+              <input type="number" id="manual-att-year" min="2020" max="2099" value="2026" onchange="renderManualAttendanceList()" style="width:85px; padding:0.35rem 0.5rem;">
+            </div>
+            <div style="display:flex; gap:0.35rem; align-items:center;">
+              <label style="margin:0;" title="Gesamtzahl der in diesem Jahr stattgefundenen Events für diese Einheit">Gesamtevents:</label>
+              <input type="number" id="manual-att-total-events" min="0" value="0" style="width:80px; padding:0.35rem 0.5rem; text-align:center;" placeholder="0">
+            </div>
             <button class="btn btn-success btn-sm" onclick="saveManualAttendance()">☁️ Jahresaktivität speichern</button>
           </div>
         </div>
@@ -601,7 +616,7 @@
         <table>
           <thead>
             <tr>
-              <th>Mitglied (Nr59)</th>
+              <th>Mitglied (<span id="manual-att-unit-header">Nr59</span>)</th>
               <th style="color:var(--success); width: 150px;">Anwesenheiten</th>
               <th style="color:var(--warning); width: 150px;">Abgemeldet</th>
               <th style="color:var(--danger); width: 150px;">Unentschuldigt</th>
@@ -753,7 +768,7 @@
     <div class="card">
       <h2>Datensicherung & Export</h2>
       <p style="color:var(--text-muted); margin-bottom:1rem;">
-        Da the Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
+        Da die Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
       </p>
       <div style="display:flex; gap:1rem; flex-wrap:wrap;">
         <button class="btn" onclick="exportBackup()">⬇️ Backup herunterladen (.json)</button>
@@ -1026,17 +1041,17 @@ function updateStatsFilterDropdown() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = `
-    <option value="all">Alle Nr59-Events gesamt</option>
+    <option value="all">Alle Events gesamt</option>
+    <option value="napo_all">Alle Nr59-Events</option>
+    <option value="bre_all">Alle Eichenwacht-Events</option>
   `;
 
   const tpls = getTemplates();
   for (const [key, cfg] of Object.entries(tpls)) {
-    if (cfg.unit === "napo") {
-      const opt = document.createElement("option");
-      opt.value = key;
-      opt.textContent = `Nur ${cfg.name}`;
-      select.appendChild(opt);
-    }
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = `Nur ${cfg.name}`;
+    select.appendChild(opt);
   }
 
   if (select.querySelector(`option[value="${currentVal}"]`)) {
@@ -1071,8 +1086,7 @@ function updateStatsYearDropdown() {
   const tpls = getTemplates();
   
   (appData.protocols || []).forEach(p => {
-    const cfg = tpls[p.format];
-    if (p.date && cfg && cfg.unit === "napo") {
+    if (p.date) {
       const year = p.date.split("-")[0];
       if (year) years.add(year);
     }
@@ -1541,7 +1555,6 @@ function sortTkStatsTable(col) {
     tkStatsSortAsc = !tkStatsSortAsc;
   } else {
     tkStatsSortCol = col;
-    // Standard: Bei TKs und Ratio absteigend, bei Namen aufsteigend
     tkStatsSortAsc = (col === 'name' || col === 'unit');
   }
   renderTkStats();
@@ -1554,7 +1567,6 @@ function renderTkStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Sortierindikatoren aktualisieren
   ['name', 'unit', 'tk', 'pres', 'ratio'].forEach(c => {
     const ind = document.getElementById(`sort-ind-tk-${c}`);
     if (ind) {
@@ -1594,18 +1606,32 @@ function renderTkStats() {
       }
     });
 
+    // Manuelle Jahres-Anwesenheiten (nur Nr59) einbeziehen
     if (filter === "all" && appData.manualAttendance) {
       if (yearFilter === "all") {
-        Object.values(appData.manualAttendance).forEach(yearData => {
-          if (yearData && yearData[m.id]) {
-            pres += (parseInt(yearData[m.id].present) || 0);
-            total += (parseInt(yearData[m.id].present) || 0) + (parseInt(yearData[m.id].excused) || 0) + (parseInt(yearData[m.id].unexcused) || 0);
+        Object.values(appData.manualAttendance).forEach(yearObj => {
+          const napoObj = getManualUnitData(yearObj, "napo");
+          if (napoObj && napoObj.members && napoObj.members[m.id]) {
+            const md = napoObj.members[m.id];
+            const pAdd = parseInt(md.present) || 0;
+            const eAdd = parseInt(md.excused) || 0;
+            const uAdd = parseInt(md.unexcused) || 0;
+            const yearTotalEvents = Math.max(parseInt(napoObj.totalEvents) || 0, pAdd + eAdd + uAdd);
+            pres += pAdd;
+            total += yearTotalEvents;
           }
         });
-      } else if (appData.manualAttendance[yearFilter] && appData.manualAttendance[yearFilter][m.id]) {
-        const md = appData.manualAttendance[yearFilter][m.id];
-        pres += (parseInt(md.present) || 0);
-        total += (parseInt(md.present) || 0) + (parseInt(md.excused) || 0) + (parseInt(md.unexcused) || 0);
+      } else if (appData.manualAttendance[yearFilter]) {
+        const napoObj = getManualUnitData(appData.manualAttendance[yearFilter], "napo");
+        if (napoObj && napoObj.members && napoObj.members[m.id]) {
+          const md = napoObj.members[m.id];
+          const pAdd = parseInt(md.present) || 0;
+          const eAdd = parseInt(md.excused) || 0;
+          const uAdd = parseInt(md.unexcused) || 0;
+          const yearTotalEvents = Math.max(parseInt(napoObj.totalEvents) || 0, pAdd + eAdd + uAdd);
+          pres += pAdd;
+          total += yearTotalEvents;
+        }
       }
     }
 
@@ -1621,7 +1647,6 @@ function renderTkStats() {
     memberStats.push({ member: m, pres, totalTK, tkPerEventNum, tkPerEvent: tkPerEventNum.toFixed(2) });
   });
 
-  // Sortierung anwenden
   memberStats.sort((a, b) => {
     let valA, valB;
     if (tkStatsSortCol === 'name') {
@@ -1770,7 +1795,7 @@ function generateBBCode() {
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n`;
 
   if (cfg.isTraining) {
     bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
@@ -1960,8 +1985,21 @@ async function deleteProtocol(id) {
 }
 
 // ==========================================
-// STATISTIKEN, DIAGRAMM & MANUELLE JAHRESAKTIVITÄT (Nur Nr59)
+// STATISTIKEN, DIAGRAMM & MANUELLE JAHRESAKTIVITÄT
 // ==========================================
+function getManualUnitData(yearObj, unit) {
+  if (!yearObj) return null;
+  // Neues Format: { napo: { totalEvents: X, members: {...} }, bre: { totalEvents: Y, members: {...} } }
+  if (yearObj[unit]) {
+    return yearObj[unit];
+  }
+  // Abwärtskompatibilität für altes Format direkt unter dem Jahr (war nur Nr59)
+  if (unit === "napo" && !yearObj.napo && !yearObj.bre) {
+    return { totalEvents: 0, members: yearObj };
+  }
+  return null;
+}
+
 function onStatsYearFilterChange() {
   const yearFilter = document.getElementById("stats-year-filter").value;
   const manualYearInput = document.getElementById("manual-att-year");
@@ -1974,8 +2012,15 @@ function onStatsYearFilterChange() {
 }
 
 function matchesStatsFilters(item, filter, yearFilter) {
+  const tpls = getTemplates();
+  const cfg = tpls[item.format];
+
   let matchesEvent = true;
-  if (filter !== "all" && filter !== "napo_all") {
+  if (filter === "napo_all") {
+    matchesEvent = (cfg && cfg.unit === "napo");
+  } else if (filter === "bre_all") {
+    matchesEvent = (cfg && cfg.unit === "bre");
+  } else if (filter !== "all") {
     matchesEvent = (item.format === filter);
   }
 
@@ -1993,7 +2038,6 @@ function sortStatsTable(col) {
     statsSortAsc = !statsSortAsc;
   } else {
     statsSortCol = col;
-    // Standard: Rate und Zahlen absteigend, Namen/Einheit aufsteigend
     statsSortAsc = (col === 'name' || col === 'unit');
   }
   renderStats();
@@ -2006,7 +2050,6 @@ function renderStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  // Sortierindikatoren aktualisieren
   ['name', 'unit', 'total', 'pres', 'exc', 'unexc', 'rate'].forEach(c => {
     const ind = document.getElementById(`sort-ind-stats-${c}`);
     if (ind) {
@@ -2021,16 +2064,14 @@ function renderStats() {
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
-  const tpls = getTemplates();
-  const filteredProtocols = (appData.protocols || []).filter(p => {
-    const cfg = tpls[p.format];
-    if (!cfg || cfg.unit !== "napo") return false;
-    return matchesStatsFilters(p, filter, yearFilter);
-  });
+  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+
+  const includeManualNapo = (filter === "all" || filter === "napo_all");
+  const includeManualBre = (filter === "all" || filter === "bre_all");
 
   const memberStats = [];
 
-  (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
+  (appData.members || []).filter(m => m.active && (m.inNapo || m.inBre)).forEach(m => {
     let total = 0, pres = 0, exc = 0, unexc = 0;
 
     filteredProtocols.forEach(p => {
@@ -2043,47 +2084,85 @@ function renderStats() {
       }
     });
 
-    if (filter === "all" && appData.manualAttendance) {
-      if (yearFilter === "all") {
-        Object.values(appData.manualAttendance).forEach(yearData => {
-          if (yearData && yearData[m.id]) {
-            const pAdd = parseInt(yearData[m.id].present) || 0;
-            const eAdd = parseInt(yearData[m.id].excused) || 0;
-            const uAdd = parseInt(yearData[m.id].unexcused) || 0;
-            pres += pAdd;
-            exc += eAdd;
-            unexc += uAdd;
-            total += (pAdd + eAdd + uAdd);
+    // Manuelle Jahres-Gesamtaktivität addieren (berücksichtigt Gesamteventanzahl der Einheit)
+    if (appData.manualAttendance) {
+      const yearsToProcess = yearFilter === "all"
+        ? Object.keys(appData.manualAttendance)
+        : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
+
+      yearsToProcess.forEach(yr => {
+        const yearObj = appData.manualAttendance[yr];
+        if (!yearObj) return;
+
+        // Nr59 Anteil
+        if (includeManualNapo && m.inNapo) {
+          const napoData = getManualUnitData(yearObj, "napo");
+          if (napoData && napoData.members && napoData.members[m.id]) {
+            const md = napoData.members[m.id];
+            const pAdd = parseInt(md.present) || 0;
+            const eAdd = parseInt(md.excused) || 0;
+            const uAdd = parseInt(md.unexcused) || 0;
+            const memberSum = pAdd + eAdd + uAdd;
+            const unitTotalEvents = parseInt(napoData.totalEvents) || 0;
+
+            if (memberSum > 0 || unitTotalEvents > 0) {
+              const effectiveTotal = Math.max(unitTotalEvents, memberSum);
+              // Fehlende Events bis zur Gesamteventanzahl werden als unentschuldigt gewertet, damit die Quote stimmt
+              const diffUnexc = Math.max(0, effectiveTotal - memberSum);
+              pres += pAdd;
+              exc += eAdd;
+              unexc += (uAdd + diffUnexc);
+              total += effectiveTotal;
+            }
           }
-        });
-      } else if (appData.manualAttendance[yearFilter] && appData.manualAttendance[yearFilter][m.id]) {
-        const md = appData.manualAttendance[yearFilter][m.id];
-        const pAdd = parseInt(md.present) || 0;
-        const eAdd = parseInt(md.excused) || 0;
-        const uAdd = parseInt(md.unexcused) || 0;
-        pres += pAdd;
-        exc += eAdd;
-        unexc += uAdd;
-        total += (pAdd + eAdd + uAdd);
-      }
+        }
+
+        // Eichenwacht Anteil
+        if (includeManualBre && m.inBre) {
+          const breData = getManualUnitData(yearObj, "bre");
+          if (breData && breData.members && breData.members[m.id]) {
+            const md = breData.members[m.id];
+            const pAdd = parseInt(md.present) || 0;
+            const eAdd = parseInt(md.excused) || 0;
+            const uAdd = parseInt(md.unexcused) || 0;
+            const memberSum = pAdd + eAdd + uAdd;
+            const unitTotalEvents = parseInt(breData.totalEvents) || 0;
+
+            if (memberSum > 0 || unitTotalEvents > 0) {
+              const effectiveTotal = Math.max(unitTotalEvents, memberSum);
+              const diffUnexc = Math.max(0, effectiveTotal - memberSum);
+              pres += pAdd;
+              exc += eAdd;
+              unexc += (uAdd + diffUnexc);
+              total += effectiveTotal;
+            }
+          }
+        }
+      });
     }
 
     if (total === 0) return;
     
     const rateNum = total > 0 ? Math.round((pres / total) * 100) : 0;
-    memberStats.push({ member: m, total, pres, exc, unexc, rateNum });
+    // Auch hier: Nur Nr59 Rang & Name anzeigen
+    const nameLabel = m.napoName || m.breName || "";
+    
+    let unitBadges = "";
+    if (m.inNapo) unitBadges += `<span class="badge badge-napo">Nr59</span> `;
+    if (m.inBre) unitBadges += `<span class="badge badge-bre">Eichenwacht</span>`;
+
+    memberStats.push({ member: m, nameLabel, unitBadges, total, pres, exc, unexc, rateNum });
   });
 
-  // Sortierung anwenden
   memberStats.sort((a, b) => {
     let valA, valB;
     if (statsSortCol === 'name') {
-      valA = a.member.napoName || "";
-      valB = b.member.napoName || "";
+      valA = a.nameLabel;
+      valB = b.nameLabel;
       return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
     } else if (statsSortCol === 'unit') {
-      valA = "Nr59";
-      valB = "Nr59";
+      valA = (a.member.inNapo ? "Nr59" : "") + (a.member.inBre ? "Eichenwacht" : "");
+      valB = (b.member.inNapo ? "Nr59" : "") + (b.member.inBre ? "Eichenwacht" : "");
       return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
     } else if (statsSortCol === 'total') {
       valA = a.total;
@@ -2105,15 +2184,12 @@ function renderStats() {
   });
 
   memberStats.forEach(item => {
-    const m = item.member;
-    const nameLabel = m.napoName || "";
-    const unitBadges = `<span class="badge badge-napo">Nr59</span>`;
     const rate = item.rateNum;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><strong>${nameLabel}</strong></td>
-      <td>${unitBadges}</td>
+      <td><strong>${item.nameLabel}</strong></td>
+      <td>${item.unitBadges}</td>
       <td>${item.total}</td>
       <td style="color:var(--success); font-weight:700;">${item.pres}</td>
       <td style="color:var(--warning);">${item.exc}</td>
@@ -2270,19 +2346,36 @@ function renderStatsChart() {
 function renderManualAttendanceList() {
   const tbody = document.getElementById("manual-att-body");
   const yearInput = document.getElementById("manual-att-year");
-  if (!tbody || !yearInput) return;
+  const unitSelect = document.getElementById("manual-att-unit");
+  const totalEventsInput = document.getElementById("manual-att-total-events");
+  const unitHeader = document.getElementById("manual-att-unit-header");
+  if (!tbody || !yearInput || !unitSelect) return;
 
   const year = yearInput.value.trim() || String(new Date().getFullYear());
+  const unit = unitSelect.value || "napo";
+
+  if (unitHeader) {
+    unitHeader.textContent = unit === "bre" ? "Eichenwacht" : "Nr59";
+  }
+
   tbody.innerHTML = "";
 
-  const yearData = (appData.manualAttendance && appData.manualAttendance[year]) ? appData.manualAttendance[year] : {};
-  const napoMembers = (appData.members || []).filter(m => m.active && m.inNapo);
+  const yearObj = (appData.manualAttendance && appData.manualAttendance[year]) ? appData.manualAttendance[year] : null;
+  const unitData = getManualUnitData(yearObj, unit);
+  const membersData = (unitData && unitData.members) ? unitData.members : {};
 
-  napoMembers.forEach(m => {
-    const mData = yearData[m.id] || { present: 0, excused: 0, unexcused: 0 };
+  if (totalEventsInput) {
+    totalEventsInput.value = (unitData && unitData.totalEvents) ? unitData.totalEvents : 0;
+  }
+
+  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+
+  relevantMembers.forEach(m => {
+    const mData = membersData[m.id] || { present: 0, excused: 0, unexcused: 0 };
+    const displayName = unit === "bre" ? (m.breName || m.napoName || "") : (m.napoName || m.breName || "");
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td><strong>${m.napoName || ""}</strong></td>
+      <td><strong>${displayName}</strong></td>
       <td>
         <input type="number" min="0" data-member="${m.id}" data-field="present" value="${mData.present || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
       </td>
@@ -2299,17 +2392,35 @@ function renderManualAttendanceList() {
 
 async function saveManualAttendance() {
   const yearInput = document.getElementById("manual-att-year");
+  const unitSelect = document.getElementById("manual-att-unit");
+  const totalEventsInput = document.getElementById("manual-att-total-events");
   const tbody = document.getElementById("manual-att-body");
-  if (!yearInput || !tbody) return;
+  if (!yearInput || !unitSelect || !tbody) return;
 
   const year = yearInput.value.trim();
+  const unit = unitSelect.value || "napo";
+  const totalEvents = totalEventsInput ? (parseInt(totalEventsInput.value) || 0) : 0;
+
   if (!year || year.length !== 4) {
     alert("Bitte ein gültiges 4-stelliges Jahr eingeben (z.B. 2026).");
     return;
   }
 
   if (!appData.manualAttendance) appData.manualAttendance = {};
-  appData.manualAttendance[year] = {};
+  if (!appData.manualAttendance[year]) appData.manualAttendance[year] = {};
+
+  // Falls altes Format unter diesem Jahr existiert, sauber in neues Objekt überführen
+  if (!appData.manualAttendance[year].napo && !appData.manualAttendance[year].bre && Object.keys(appData.manualAttendance[year]).length > 0) {
+    const legacyMembers = { ...appData.manualAttendance[year] };
+    appData.manualAttendance[year] = {
+      napo: { totalEvents: 0, members: legacyMembers }
+    };
+  }
+
+  appData.manualAttendance[year][unit] = {
+    totalEvents: totalEvents,
+    members: {}
+  };
 
   const inputs = tbody.querySelectorAll("input[data-member]");
   inputs.forEach(inp => {
@@ -2317,17 +2428,22 @@ async function saveManualAttendance() {
     const field = inp.getAttribute("data-field");
     const val = parseInt(inp.value) || 0;
 
-    if (!appData.manualAttendance[year][mId]) {
-      appData.manualAttendance[year][mId] = { present: 0, excused: 0, unexcused: 0 };
+    if (!appData.manualAttendance[year][unit].members[mId]) {
+      appData.manualAttendance[year][unit].members[mId] = { present: 0, excused: 0, unexcused: 0 };
     }
-    appData.manualAttendance[year][mId][field] = val;
+    appData.manualAttendance[year][unit].members[mId][field] = val;
   });
 
-  for (const [mId, counts] of Object.entries(appData.manualAttendance[year])) {
+  for (const [mId, counts] of Object.entries(appData.manualAttendance[year][unit].members)) {
     if (counts.present === 0 && counts.excused === 0 && counts.unexcused === 0) {
-      delete appData.manualAttendance[year][mId];
+      delete appData.manualAttendance[year][unit].members[mId];
     }
   }
+
+  if (totalEvents === 0 && Object.keys(appData.manualAttendance[year][unit].members).length === 0) {
+    delete appData.manualAttendance[year][unit];
+  }
+
   if (Object.keys(appData.manualAttendance[year]).length === 0) {
     delete appData.manualAttendance[year];
   }
@@ -2336,7 +2452,8 @@ async function saveManualAttendance() {
   updateStatsYearDropdown();
   renderStats();
   renderTkStats();
-  showToast(`Jahresaktivität für ${year} gespeichert & synchronisiert!`);
+  const unitLabel = unit === "bre" ? "Eichenwacht" : "Nr59";
+  showToast(`Jahresaktivität (${unitLabel}) für ${year} gespeichert & synchronisiert!`);
 }
 
 // ==========================================
