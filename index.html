@@ -197,6 +197,16 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    /* Feste Mindesthöhe damit die zweizeiligen Überschriften perfekt auf einer Höhe stehen */
+    min-height: 85px;
+    justify-content: flex-start;
+  }
+  .record-middle-section {
+    /* Fester Bereich für die rote Zahl, damit diese über allen Boxen perfekt auf einer Linie liegt */
+    min-height: 55px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
   .record-bottom-section {
     margin-top: auto;
@@ -205,7 +215,7 @@
     justify-content: flex-end;
   }
   .record-emoji-large { font-size: 1.8rem; line-height: 1.2; margin-bottom: 0.15rem; }
-  .record-box h3 { font-size: 0.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+  .record-box h3 { font-size: 0.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0; }
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0.2rem; }
   .record-details { font-size: 0.82rem; color: var(--text); }
 
@@ -492,8 +502,10 @@
                 <div class="record-emoji-large">Ø</div>
                 <h3>Regiments-Durchschnitt</h3>
               </div>
-              <div class="record-bottom-section">
+              <div class="record-middle-section">
                 <div id="record-avg-val" class="record-value">0.0 TKs</div>
+              </div>
+              <div class="record-bottom-section">
                 <div id="record-avg-details" class="record-details">Pro Event</div>
               </div>
             </div>
@@ -502,8 +514,10 @@
                 <div class="record-emoji-large">💂‍♂️💂‍♂️💂‍♂️</div>
                 <h3>Regiments-Rekord</h3>
               </div>
-              <div class="record-bottom-section">
+              <div class="record-middle-section">
                 <div id="record-reg-val" class="record-value">0 TKs</div>
+              </div>
+              <div class="record-bottom-section">
                 <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
               </div>
             </div>
@@ -512,8 +526,10 @@
                 <div class="record-emoji-large">💀</div>
                 <h3>Einzelspieler-Rekord</h3>
               </div>
-              <div class="record-bottom-section">
+              <div class="record-middle-section">
                 <div id="record-player-val" class="record-value">0 TKs</div>
+              </div>
+              <div class="record-bottom-section">
                 <div id="record-player-details" class="record-details">Max. an einem Event</div>
               </div>
             </div>
@@ -1445,7 +1461,7 @@ async function saveTeamkillLog() {
     }
   }
 
-  if (!appData.teamkillLogs) appData.teamkillLogs = [];
+  if (!appData.teamkillLogs) appData.teamkillLogs = {};
 
   const existingIdx = appData.teamkillLogs.findIndex(t => t.id === editId || (t.format === fmt && t.date === date));
 
@@ -1567,10 +1583,18 @@ function renderTkRecords() {
   let maxPlayerTK = -1;
   let bestPlayers = [];
 
+  // Berechnung nach Format aufschlüsseln für den Durchschnitt
+  const formatTotals = {};
+
   logs.forEach(log => {
     let eventSum = 0;
     const cfg = tpls[log.format];
-    const eventName = cfg ? cfg.name : log.format;
+    const fmtKey = log.format;
+    const eventName = cfg ? cfg.name : fmtKey;
+
+    if (!formatTotals[fmtKey]) {
+      formatTotals[fmtKey] = { name: eventName, totalTK: 0, count: 0 };
+    }
 
     if (log.records) {
       for (const [mId, rec] of Object.entries(log.records)) {
@@ -1593,6 +1617,9 @@ function renderTkRecords() {
       }
     }
 
+    formatTotals[fmtKey].totalTK += eventSum;
+    formatTotals[fmtKey].count += 1;
+
     if (eventSum > maxEventTK) {
       maxEventTK = eventSum;
       bestEventLogs = [log];
@@ -1602,9 +1629,20 @@ function renderTkRecords() {
   });
 
   if (logs.length > 0) {
-    const avg = (totalRegimentTK / logs.length).toFixed(2);
-    avgValEl.textContent = `${avg} TKs`;
-    avgDetailsEl.textContent = `Pro Event`;
+    const overallAvg = (totalRegimentTK / logs.length).toFixed(2);
+    avgValEl.textContent = `${overallAvg} TKs`;
+    
+    let detailsHtml = "";
+    let idx = 0;
+    for (const [fmtKey, ft] of Object.entries(formatTotals)) {
+      if (ft.count > 0) {
+        const fmtAvg = (ft.totalTK / ft.count).toFixed(2);
+        if (idx > 0) detailsHtml += `<hr style="border:0; border-top:1px dashed rgba(239,68,68,0.3); margin:4px 0;">`;
+        detailsHtml += `${ft.name}:<br><strong>${fmtAvg} TKs</strong>`;
+        idx++;
+      }
+    }
+    avgDetailsEl.innerHTML = detailsHtml || "Pro Event";
   } else {
     avgValEl.textContent = "0.0 TKs";
     avgDetailsEl.textContent = "Pro Event";
