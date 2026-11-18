@@ -632,7 +632,7 @@
           <div style="display:flex; gap:0.4rem; align-items:center;">
             <label style="margin:0;">Format:</label>
             <select id="stats-filter" onchange="renderStats(); renderStatsChart();" style="width:auto;">
-              <option value="all">Alle Events gesamt</option>
+              <option value="all">Alle Events</option>
               <option value="napo_all">Alle Nr59-Events</option>
               <option value="bre_all">Alle Eichenwacht-Events</option>
             </select>
@@ -879,6 +879,7 @@
       <table>
         <thead>
           <tr>
+            <th style="width: 50px;">Pos.</th>
             <th>Schlüssel</th>
             <th>Anzeigename</th>
             <th>Typ</th>
@@ -1191,7 +1192,7 @@ function updateStatsFilterDropdown() {
   if (!select) return;
   const currentVal = select.value;
   select.innerHTML = `
-    <option value="all">Alle Events gesamt</option>
+    <option value="all">Alle Events</option>
     <option value="napo_all">Alle Nr59-Events</option>
     <option value="bre_all">Alle Eichenwacht-Events</option>
   `;
@@ -3026,7 +3027,9 @@ function renderTemplatesTable() {
   tbody.innerHTML = "";
   
   const tpls = getTemplates();
-  for (const [key, cfg] of Object.entries(tpls)) {
+  const entries = Object.entries(tpls);
+
+  entries.forEach(([key, cfg], index) => {
     const typeBadge = cfg.isTraining 
       ? '<span class="badge badge-training">Training</span>' 
       : '<span class="badge badge-event">Event</span>';
@@ -3037,6 +3040,10 @@ function renderTemplatesTable() {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
+      <td style="white-space:nowrap;">
+        <button class="btn btn-sm btn-secondary" onclick="moveTemplate(${index}, -1)" ${index === 0 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⬆️</button>
+        <button class="btn btn-sm btn-secondary" onclick="moveTemplate(${index}, 1)" ${index === entries.length - 1 ? 'disabled style="opacity:0.3; cursor:default;"' : ''}>⬇️</button>
+      </td>
       <td><code>${key}</code></td>
       <td><strong>${cfg.name}</strong></td>
       <td>${typeBadge}</td>
@@ -3048,7 +3055,32 @@ function renderTemplatesTable() {
       </td>
     `;
     tbody.appendChild(tr);
-  }
+  });
+}
+
+async function moveTemplate(index, direction) {
+  const tpls = getTemplates();
+  const entries = Object.entries(tpls);
+  const newIndex = index + direction;
+  if (newIndex < 0 || newIndex >= entries.length) return;
+
+  const temp = entries[index];
+  entries[index] = entries[newIndex];
+  entries[newIndex] = temp;
+
+  appData.templates = {};
+  entries.forEach(([k, v]) => {
+    appData.templates[k] = v;
+  });
+
+  renderTemplatesTable();
+  updateFormatDropdown();
+  updateTkFormatDropdown();
+  updateStatsFilterDropdown();
+  updateTkStatsFilterDropdown();
+  onFormatChange(false);
+  await saveToCloud();
+  showToast("Template-Reihenfolge aktualisiert & synchronisiert.");
 }
 
 function exportBackup() {
