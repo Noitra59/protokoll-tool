@@ -253,8 +253,8 @@
   }
   .badge-event { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
   .badge-training { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4); }
-  .badge-napo { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); } /* Gelborange */
-  .badge-bre { background: rgba(5, 150, 105, 0.22); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.45); } /* Dunkleres Grün */
+  .badge-napo { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+  .badge-bre { background: rgba(5, 150, 105, 0.22); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.45); }
   .badge-inactive { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
 
   .toast {
@@ -304,7 +304,6 @@
           <h2>1. Event & Kopfdaten</h2>
           <input type="hidden" id="edit-protocol-id" value="">
           
-          <!-- Indikator für Neu / Bearbeiten -->
           <div id="editor-mode-banner" class="mode-indicator new">
             <span>✨ Modus: Neues Protokoll erstellen</span>
             <button class="btn btn-sm btn-secondary" id="btn-cancel-edit" style="display:none;" onclick="resetEditorMode()">Abbrechen</button>
@@ -313,9 +312,7 @@
           <div class="grid-2" style="gap: 0.75rem;">
             <div class="form-group">
               <label>Event-Format (Wochenrhythmus)</label>
-              <select id="proto-format" onchange="onFormatChange()">
-                <!-- Wird dynamisch gefüllt -->
-              </select>
+              <select id="proto-format" onchange="onFormatChange()"></select>
             </div>
             <div class="form-group">
               <label>Datum</label>
@@ -345,7 +342,6 @@
             </div>
           </div>
 
-          <!-- Spezielles Zusatzfeld für Training -->
           <div class="grid-2" style="gap: 0.75rem; display:none;" id="grp-training-fields">
             <div class="form-group">
               <label>Rangaufstiege</label>
@@ -364,7 +360,6 @@
           </div>
           <div id="attendance-list"></div>
 
-          <!-- Entsatzspieler / Milizen direkt hier am Ende von Block 2 -->
           <div class="form-group" id="grp-mercs" style="margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem;">
             <label>Entsatzspieler / Milizen</label>
             <input type="text" id="proto-mercs" value="/" oninput="updateOutput()">
@@ -449,9 +444,7 @@
           <div class="grid-2" style="gap: 0.75rem;">
             <div class="form-group">
               <label>Event-Format</label>
-              <select id="tk-format" onchange="onTkFormatChange()">
-                <!-- Wird dynamisch mit TK-fähigen Events gefüllt -->
-              </select>
+              <select id="tk-format" onchange="onTkFormatChange()"></select>
             </div>
             <div class="form-group">
               <label>Datum</label>
@@ -498,9 +491,7 @@
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
             <h2 style="border:none; margin:0; padding:0;">Teamkill-Statistik</h2>
             <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
-              <select id="tk-stats-filter" onchange="renderTkStats()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
-                <!-- Wird dynamisch mit TK-Events befüllt -->
-              </select>
+              <select id="tk-stats-filter" onchange="renderTkStats()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;"></select>
               <select id="tk-stats-year-filter" onchange="onTkYearFilterChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
                 <option value="all">Alle Jahre</option>
               </select>
@@ -552,7 +543,7 @@
           </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
             <label style="margin:0;">Jahr:</label>
-            <select id="stats-year-filter" onchange="renderStats(); renderStatsChart();" style="width:auto;">
+            <select id="stats-year-filter" onchange="onStatsYearFilterChange()" style="width:auto;">
               <option value="all">Alle Jahre</option>
             </select>
           </div>
@@ -583,6 +574,35 @@
           </tr>
         </thead>
         <tbody id="stats-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Manuelle Jahres-Gesamtaktivität -->
+    <div class="card">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+        <div>
+          <h2 style="border:none; margin:0; padding:0;">Manuelle Jahres-Gesamtaktivität nachtragen</h2>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
+            Hier kannst du für ein Jahr zusätzliche Anwesenheiten, Abmeldungen oder Fehltage pro Mitglied eintragen (wird auf die obige Tabelle addiert).
+          </p>
+        </div>
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <label style="margin:0;">Jahr:</label>
+          <input type="number" id="manual-att-year" min="2020" max="2099" value="2026" onchange="renderManualAttendanceList()" style="width:95px; padding:0.35rem 0.5rem;">
+          <button class="btn btn-success btn-sm" onclick="saveManualAttendance()">☁️ Jahresaktivität speichern</button>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Mitglied (Nr59)</th>
+            <th style="color:var(--success); width: 150px;">Anwesenheiten</th>
+            <th style="color:var(--warning); width: 150px;">Abgemeldet</th>
+            <th style="color:var(--danger); width: 150px;">Unentschuldigt</th>
+          </tr>
+        </thead>
+        <tbody id="manual-att-body"></tbody>
       </table>
     </div>
   </div>
@@ -784,7 +804,7 @@ const DEFAULT_TEMPLATES = {
   }
 };
 
-let appData = { members: [], protocols: [], teamkillLogs: [], templates: {} };
+let appData = { members: [], protocols: [], teamkillLogs: [], templates: {}, manualAttendance: {} };
 let currentAttendance = {};
 let currentTkInputs = {};
 let isFirstLoad = true;
@@ -818,6 +838,7 @@ async function loadFromCloud(manual = false) {
     if (data) {
       appData = data;
       if (!appData.teamkillLogs) appData.teamkillLogs = [];
+      if (!appData.manualAttendance) appData.manualAttendance = {};
       if (!appData.templates || Object.keys(appData.templates).length === 0) {
         appData.templates = { ...DEFAULT_TEMPLATES };
       }
@@ -831,6 +852,7 @@ async function loadFromCloud(manual = false) {
       try { appData = JSON.parse(local); } catch(e){}
     }
     if (!appData.teamkillLogs) appData.teamkillLogs = [];
+    if (!appData.manualAttendance) appData.manualAttendance = {};
     if (!appData.templates || Object.keys(appData.templates).length === 0) {
       appData.templates = { ...DEFAULT_TEMPLATES };
     }
@@ -850,6 +872,7 @@ async function loadFromCloud(manual = false) {
   renderTkRecords();
   renderStats();
   renderStatsChart();
+  renderManualAttendanceList();
   updateOutput();
   
   isFirstLoad = false;
@@ -858,7 +881,7 @@ async function loadFromCloud(manual = false) {
   if (activeTabEl) {
     const activeTab = activeTabEl.id;
     if (activeTab === "tab-history") renderHistory();
-    if (activeTab === "tab-stats") { renderStats(); renderStatsChart(); }
+    if (activeTab === "tab-stats") { renderStats(); renderStatsChart(); renderManualAttendanceList(); }
     if (activeTab === "tab-members") renderMembers();
     if (activeTab === "tab-templates") renderTemplatesTable();
   }
@@ -910,8 +933,14 @@ function switchTab(tabId, btnElement) {
   if (tabId === "history") renderHistory();
   if (tabId === "stats") {
     updateStatsYearDropdown();
+    const yearFilter = document.getElementById("stats-year-filter").value;
+    const manualYearInput = document.getElementById("manual-att-year");
+    if (manualYearInput && yearFilter !== "all") {
+      manualYearInput.value = yearFilter;
+    }
     renderStats();
     renderStatsChart();
+    renderManualAttendanceList();
   }
   if (tabId === "members") renderMembers();
   if (tabId === "templates") renderTemplatesTable();
@@ -921,8 +950,10 @@ function initEditor() {
   const today = new Date().toISOString().split("T")[0];
   const dateEl = document.getElementById("proto-date");
   const tkDateEl = document.getElementById("tk-date");
+  const manualYearEl = document.getElementById("manual-att-year");
   if (dateEl) dateEl.value = today;
   if (tkDateEl) tkDateEl.value = today;
+  if (manualYearEl) manualYearEl.value = new Date().getFullYear();
 
   const day = new Date().getDay();
   let defaultKey = "tue_hli";
@@ -1041,6 +1072,11 @@ function updateStatsYearDropdown() {
       if (year) years.add(year);
     }
   });
+  if (appData.manualAttendance) {
+    Object.keys(appData.manualAttendance).forEach(y => {
+      if (y) years.add(y);
+    });
+  }
 
   const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
 
@@ -1270,7 +1306,6 @@ function renderTkList() {
     return;
   }
 
-  // Nur Nr59 Mitglieder anzeigen
   const relevantMembers = (appData.members || []).filter(m => m.active && m.inNapo);
 
   relevantMembers.forEach(m => {
@@ -1343,6 +1378,7 @@ async function saveTeamkillLog() {
   renderTkHistory();
   renderTkStats();
   renderTkRecords();
+  renderStatsChart();
   updateStatsYearDropdown();
   showToast("Teamkills gespeichert & synchronisiert!");
 }
@@ -1353,7 +1389,6 @@ function renderTkHistory() {
   tbody.innerHTML = "";
 
   const tpls = getTemplates();
-  // Nur Teamkill-Logs für Nr59 anzeigen
   const napoLogs = (appData.teamkillLogs || []).filter(log => {
     const cfg = tpls[log.format];
     return cfg && cfg.unit === "napo";
@@ -1400,7 +1435,6 @@ function renderTkRecords() {
   const playerDetailsEl = document.getElementById("record-player-details");
 
   const tpls = getTemplates();
-  // Nur Teamkill-Logs für Nr59 im gewählten Jahr
   const logs = (appData.teamkillLogs || []).filter(l => {
     const cfg = tpls[l.format];
     if (!cfg || cfg.unit !== "napo") return false;
@@ -1425,7 +1459,7 @@ function renderTkRecords() {
 
     if (log.records) {
       for (const [mId, rec] of Object.entries(log.records)) {
-        if (!membersMap[mId]) continue; // Nur Nr59-Mitglieder berücksichtigen
+        if (!membersMap[mId]) continue;
         const c = parseInt(rec.count) || 0;
         eventSum += c;
         totalRegimentTK += c;
@@ -1512,7 +1546,6 @@ function renderTkStats() {
 
   const memberStats = [];
 
-  // Nur Nr59 Mitglieder
   (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, totalTK = 0;
 
@@ -1525,6 +1558,22 @@ function renderTkStats() {
         }
       }
     });
+
+    // Manuelle Jahres-Anwesenheiten einbeziehen, falls "all" als Event-Filter gewählt ist
+    if (filter === "all" && appData.manualAttendance) {
+      if (yearFilter === "all") {
+        Object.values(appData.manualAttendance).forEach(yearData => {
+          if (yearData && yearData[m.id]) {
+            pres += (parseInt(yearData[m.id].present) || 0);
+            total += (parseInt(yearData[m.id].present) || 0) + (parseInt(yearData[m.id].excused) || 0) + (parseInt(yearData[m.id].unexcused) || 0);
+          }
+        });
+      } else if (appData.manualAttendance[yearFilter] && appData.manualAttendance[yearFilter][m.id]) {
+        const md = appData.manualAttendance[yearFilter][m.id];
+        pres += (parseInt(md.present) || 0);
+        total += (parseInt(md.present) || 0) + (parseInt(md.excused) || 0) + (parseInt(md.unexcused) || 0);
+      }
+    }
 
     filteredTkLogs.forEach(log => {
       if (log.records && log.records[m.id]) {
@@ -1580,6 +1629,7 @@ async function deleteTkLog(id) {
   renderTkHistory();
   renderTkStats();
   renderTkRecords();
+  renderStatsChart();
   loadExistingTkForDate();
   showToast("Eintrag gelöscht.");
 }
@@ -1854,8 +1904,19 @@ async function deleteProtocol(id) {
 }
 
 // ==========================================
-// STATISTIKEN & DIAGRAMM (Nur Nr59)
+// STATISTIKEN, DIAGRAMM & MANUELLE JAHRESAKTIVITÄT (Nur Nr59)
 // ==========================================
+function onStatsYearFilterChange() {
+  const yearFilter = document.getElementById("stats-year-filter").value;
+  const manualYearInput = document.getElementById("manual-att-year");
+  if (manualYearInput && yearFilter !== "all") {
+    manualYearInput.value = yearFilter;
+    renderManualAttendanceList();
+  }
+  renderStats();
+  renderStatsChart();
+}
+
 function matchesStatsFilters(item, filter, yearFilter) {
   let matchesEvent = true;
   if (filter !== "all" && filter !== "napo_all") {
@@ -1882,14 +1943,12 @@ function renderStats() {
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
   const tpls = getTemplates();
-  // Nur Nr59 Protokolle einbeziehen
   const filteredProtocols = (appData.protocols || []).filter(p => {
     const cfg = tpls[p.format];
     if (!cfg || cfg.unit !== "napo") return false;
     return matchesStatsFilters(p, filter, yearFilter);
   });
 
-  // Nur aktive Nr59 Mitglieder auflisten
   (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, exc = 0, unexc = 0;
 
@@ -1902,6 +1961,32 @@ function renderStats() {
         else unexc++;
       }
     });
+
+    // Manuelle Jahres-Gesamtaktivität addieren, wenn kein einzelnes Event-Format gefiltert wird
+    if (filter === "all" && appData.manualAttendance) {
+      if (yearFilter === "all") {
+        Object.values(appData.manualAttendance).forEach(yearData => {
+          if (yearData && yearData[m.id]) {
+            const pAdd = parseInt(yearData[m.id].present) || 0;
+            const eAdd = parseInt(yearData[m.id].excused) || 0;
+            const uAdd = parseInt(yearData[m.id].unexcused) || 0;
+            pres += pAdd;
+            exc += eAdd;
+            unexc += uAdd;
+            total += (pAdd + eAdd + uAdd);
+          }
+        });
+      } else if (appData.manualAttendance[yearFilter] && appData.manualAttendance[yearFilter][m.id]) {
+        const md = appData.manualAttendance[yearFilter][m.id];
+        const pAdd = parseInt(md.present) || 0;
+        const eAdd = parseInt(md.excused) || 0;
+        const uAdd = parseInt(md.unexcused) || 0;
+        pres += pAdd;
+        exc += eAdd;
+        unexc += uAdd;
+        total += (pAdd + eAdd + uAdd);
+      }
+    }
 
     if (total === 0) return;
     
@@ -1949,46 +2034,62 @@ function renderStatsChart() {
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
   const tpls = getTemplates();
-  const protocols = [...(appData.protocols || [])]
-    .filter(p => {
-      const cfg = tpls[p.format];
-      if (!cfg || cfg.unit !== "napo") return false;
-      return matchesStatsFilters(p, filter, yearFilter);
-    })
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const eventsByKey = {};
 
-  const tkMap = {};
-  (appData.teamkillLogs || []).forEach(t => {
-    const cfg = tpls[t.format];
-    if (cfg && cfg.unit === "napo" && matchesStatsFilters(t, filter, yearFilter)) {
-      let sumTK = 0;
-      if (t.records) {
-        Object.values(t.records).forEach(r => sumTK += (parseInt(r.count) || 0));
-      }
-      tkMap[t.date] = sumTK;
+  // 1. Alle passenden Protokolle sammeln
+  (appData.protocols || []).forEach(p => {
+    const cfg = tpls[p.format];
+    if (!cfg || cfg.unit !== "napo") return;
+    if (!matchesStatsFilters(p, filter, yearFilter)) return;
+
+    const key = `${p.date}_${p.format}`;
+    if (!eventsByKey[key]) {
+      eventsByKey[key] = { date: p.date, format: p.format, pres: 0, exc: 0, unexc: 0, tk: 0 };
+    }
+    if (p.attendance) {
+      Object.values(p.attendance).forEach(a => {
+        if (a.status === "present") eventsByKey[key].pres++;
+        else if (a.status === "excused") eventsByKey[key].exc++;
+        else eventsByKey[key].unexc++;
+      });
     }
   });
 
-  if (protocols.length === 0) {
+  // 2. Alle passenden Teamkill-Logs sammeln (auch wenn kein Protokoll für diesen Tag existiert!)
+  (appData.teamkillLogs || []).forEach(t => {
+    const cfg = tpls[t.format];
+    if (!cfg || cfg.unit !== "napo") return;
+    if (!matchesStatsFilters(t, filter, yearFilter)) return;
+
+    const key = `${t.date}_${t.format}`;
+    if (!eventsByKey[key]) {
+      eventsByKey[key] = { date: t.date, format: t.format, pres: 0, exc: 0, unexc: 0, tk: 0 };
+    }
+    let sumTK = 0;
+    if (t.records) {
+      Object.values(t.records).forEach(r => sumTK += (parseInt(r.count) || 0));
+    }
+    eventsByKey[key].tk += sumTK;
+  });
+
+  // Chronologisch sortieren
+  const dataPoints = Object.values(eventsByKey)
+    .sort((a, b) => a.date.localeCompare(b.date) || a.format.localeCompare(b.format))
+    .map(item => ({
+      date: formatGermanDate(item.date),
+      pres: item.pres,
+      exc: item.exc,
+      unexc: item.unexc,
+      tk: item.tk
+    }));
+
+  if (dataPoints.length === 0) {
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Keine Nr59-Daten im gewählten Zeitraum vorhanden", rect.width / 2, rect.height / 2);
     return;
   }
-
-  const dataPoints = protocols.map(p => {
-    let pres = 0, exc = 0, unexc = 0;
-    if (p.attendance) {
-      Object.values(p.attendance).forEach(a => {
-        if (a.status === "present") pres++;
-        else if (a.status === "excused") exc++;
-        else unexc++;
-      });
-    }
-    const tk = tkMap[p.date] || 0;
-    return { date: formatGermanDate(p.date), pres, exc, unexc, tk };
-  });
 
   let maxVal = 5;
   dataPoints.forEach(d => {
@@ -2051,6 +2152,79 @@ function renderStatsChart() {
       ctx.fillRect(x, y, barWidth, h);
     });
   });
+}
+
+function renderManualAttendanceList() {
+  const tbody = document.getElementById("manual-att-body");
+  const yearInput = document.getElementById("manual-att-year");
+  if (!tbody || !yearInput) return;
+
+  const year = yearInput.value.trim() || String(new Date().getFullYear());
+  tbody.innerHTML = "";
+
+  const yearData = (appData.manualAttendance && appData.manualAttendance[year]) ? appData.manualAttendance[year] : {};
+  const napoMembers = (appData.members || []).filter(m => m.active && m.inNapo);
+
+  napoMembers.forEach(m => {
+    const mData = yearData[m.id] || { present: 0, excused: 0, unexcused: 0 };
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${m.napoName || ""}</strong></td>
+      <td>
+        <input type="number" min="0" data-member="${m.id}" data-field="present" value="${mData.present || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
+      </td>
+      <td>
+        <input type="number" min="0" data-member="${m.id}" data-field="excused" value="${mData.excused || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
+      </td>
+      <td>
+        <input type="number" min="0" data-member="${m.id}" data-field="unexcused" value="${mData.unexcused || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function saveManualAttendance() {
+  const yearInput = document.getElementById("manual-att-year");
+  const tbody = document.getElementById("manual-att-body");
+  if (!yearInput || !tbody) return;
+
+  const year = yearInput.value.trim();
+  if (!year || year.length !== 4) {
+    alert("Bitte ein gültiges 4-stelliges Jahr eingeben (z.B. 2026).");
+    return;
+  }
+
+  if (!appData.manualAttendance) appData.manualAttendance = {};
+  appData.manualAttendance[year] = {};
+
+  const inputs = tbody.querySelectorAll("input[data-member]");
+  inputs.forEach(inp => {
+    const mId = inp.getAttribute("data-member");
+    const field = inp.getAttribute("data-field");
+    const val = parseInt(inp.value) || 0;
+
+    if (!appData.manualAttendance[year][mId]) {
+      appData.manualAttendance[year][mId] = { present: 0, excused: 0, unexcused: 0 };
+    }
+    appData.manualAttendance[year][mId][field] = val;
+  });
+
+  // Leere Einträge bereinigen, damit kein unnötiger Datenmüll entsteht
+  for (const [mId, counts] of Object.entries(appData.manualAttendance[year])) {
+    if (counts.present === 0 && counts.excused === 0 && counts.unexcused === 0) {
+      delete appData.manualAttendance[year][mId];
+    }
+  }
+  if (Object.keys(appData.manualAttendance[year]).length === 0) {
+    delete appData.manualAttendance[year];
+  }
+
+  await saveToCloud();
+  updateStatsYearDropdown();
+  renderStats();
+  renderTkStats();
+  showToast(`Jahresaktivität für ${year} gespeichert & synchronisiert!`);
 }
 
 // ==========================================
@@ -2117,6 +2291,7 @@ async function moveMember(index, direction) {
   renderTkStats();
   renderStats();
   renderStatsChart();
+  renderManualAttendanceList();
   updateOutput();
   await saveToCloud();
   showToast("Reihenfolge aktualisiert & synchronisiert.");
@@ -2154,6 +2329,7 @@ async function addMember() {
   renderAttendanceList();
   renderTkList();
   renderTkStats();
+  renderManualAttendanceList();
   updateOutput();
   await saveToCloud();
   showToast("Mitglied hinzugefügt & synchronisiert!");
@@ -2166,6 +2342,7 @@ async function updateMember(id, field, value) {
     renderAttendanceList();
     renderTkList();
     renderTkStats();
+    renderManualAttendanceList();
     updateOutput();
     await saveToCloud();
     showToast("Mitglied aktualisiert.");
@@ -2180,6 +2357,7 @@ async function toggleMemberActive(id) {
     renderAttendanceList();
     renderTkList();
     renderTkStats();
+    renderManualAttendanceList();
     updateOutput();
     await saveToCloud();
   }
@@ -2199,6 +2377,7 @@ async function deleteMember(id) {
   renderTkStats();
   renderStats();
   renderStatsChart();
+  renderManualAttendanceList();
   updateOutput();
   await saveToCloud();
   showToast("Mitglied gelöscht & synchronisiert.");
