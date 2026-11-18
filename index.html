@@ -503,7 +503,6 @@
             <thead>
               <tr>
                 <th class="sortable" onclick="sortTkStatsTable('name')">Mitglied <span id="sort-ind-tk-name"></span></th>
-                <th class="sortable" onclick="sortTkStatsTable('unit')">Einheit <span id="sort-ind-tk-unit"></span></th>
                 <th class="sortable" style="color:var(--danger);" onclick="sortTkStatsTable('tk')">Teamkills <span id="sort-ind-tk-tk">▼</span></th>
                 <th class="sortable" onclick="sortTkStatsTable('pres')">Anwesend <span id="sort-ind-tk-pres"></span></th>
                 <th class="sortable" style="color:var(--danger);" onclick="sortTkStatsTable('ratio')">TK / Event <span id="sort-ind-tk-ratio"></span></th>
@@ -1472,6 +1471,7 @@ function renderTkRecords() {
   (appData.members || []).filter(m => m.inNapo).forEach(m => membersMap[m.id] = m);
 
   let totalRegimentTK = 0;
+  let formatTotals = {}; // Speichert Summe und Anzahl pro Event-Format
   let maxEventTK = -1;
   let bestEventLogs = [];
 
@@ -1482,6 +1482,10 @@ function renderTkRecords() {
     let eventSum = 0;
     const cfg = tpls[log.format];
     const eventName = cfg ? cfg.name : log.format;
+
+    if (!formatTotals[log.format]) {
+      formatTotals[log.format] = { name: eventName, sum: 0, count: 0 };
+    }
 
     if (log.records) {
       for (const [mId, rec] of Object.entries(log.records)) {
@@ -1504,6 +1508,9 @@ function renderTkRecords() {
       }
     }
 
+    formatTotals[log.format].sum += eventSum;
+    formatTotals[log.format].count += 1;
+
     if (eventSum > maxEventTK) {
       maxEventTK = eventSum;
       bestEventLogs = [log];
@@ -1515,7 +1522,15 @@ function renderTkRecords() {
   if (logs.length > 0) {
     const avg = (totalRegimentTK / logs.length).toFixed(2);
     avgValEl.textContent = `${avg} TKs`;
-    avgDetailsEl.textContent = `Über ${logs.length} erfasste Events`;
+    
+    let detailsHtml = `Über ${logs.length} erfasste Events`;
+    for (const [fmtKey, fData] of Object.entries(formatTotals)) {
+      if (fData.count > 0) {
+        const fAvg = (fData.sum / fData.count).toFixed(2);
+        detailsHtml += `<br><span style="font-size:0.75rem; opacity:0.85;">${fData.name}: ${fAvg} TKs</span>`;
+      }
+    }
+    avgDetailsEl.innerHTML = detailsHtml;
   } else {
     avgValEl.textContent = "0.0 TKs";
     avgDetailsEl.textContent = "Keine Daten";
@@ -1555,7 +1570,6 @@ function sortTkStatsTable(col) {
     tkStatsSortAsc = !tkStatsSortAsc;
   } else {
     tkStatsSortCol = col;
-    // Wenn auf "name" geklickt wird, standardmäßig aufsteigend (Reihenfolge der Mitgliederliste)
     tkStatsSortAsc = true;
   }
   renderTkStats();
@@ -1568,7 +1582,7 @@ function renderTkStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  ['name', 'unit', 'tk', 'pres', 'ratio'].forEach(c => {
+  ['name', 'tk', 'pres', 'ratio'].forEach(c => {
     const ind = document.getElementById(`sort-ind-tk-${c}`);
     if (ind) {
       if (tkStatsSortCol === c) {
@@ -1594,7 +1608,6 @@ function renderTkStats() {
 
   const memberStats = [];
 
-  // Ausgangsreihenfolge folgt exakt der Mitgliederliste (appData.members)
   (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, totalTK = 0;
 
@@ -1652,14 +1665,9 @@ function renderTkStats() {
     memberStats.sort((a, b) => {
       let valA, valB;
       if (tkStatsSortCol === 'name') {
-        // Wenn nach Name/Mitglied sortiert wird, nach Index in der Mitgliederliste sortieren!
         const indexA = appData.members.findIndex(x => x.id === a.member.id);
         const indexB = appData.members.findIndex(x => x.id === b.member.id);
         return tkStatsSortAsc ? (indexA - indexB) : (indexB - indexA);
-      } else if (tkStatsSortCol === 'unit') {
-        valA = "Nr59";
-        valB = "Nr59";
-        return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
       } else if (tkStatsSortCol === 'tk') {
         valA = a.totalTK;
         valB = b.totalTK;
@@ -1677,12 +1685,10 @@ function renderTkStats() {
   memberStats.forEach(item => {
     const m = item.member;
     const nameLabel = m.napoName || "";
-    const unitBadges = `<span class="badge badge-napo">Nr59</span>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${nameLabel}</strong></td>
-      <td>${unitBadges}</td>
       <td style="color:var(--danger); font-weight:700;">${item.totalTK}</td>
       <td style="color:var(--success);">${item.pres}</td>
       <td style="color:var(--danger);">${item.tkPerEvent}</td>
@@ -2165,7 +2171,6 @@ function renderStats() {
     memberStats.sort((a, b) => {
       let valA, valB;
       if (statsSortCol === 'name') {
-        // Sortierung nach Index in der Mitgliederliste statt alphabetisch
         const indexA = appData.members.findIndex(x => x.id === a.member.id);
         const indexB = appData.members.findIndex(x => x.id === b.member.id);
         return statsSortAsc ? (indexA - indexB) : (indexB - indexA);
