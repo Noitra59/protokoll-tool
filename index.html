@@ -923,7 +923,7 @@ async function loadFromCloud(manual = false) {
   setSyncStatus("loading", "🔄 Lade Cloud-Daten...");
   
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 4000);
+  const timeoutId = setTimeout(() => controller.abort(), 15000);
 
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, { signal: controller.signal });
@@ -1906,81 +1906,42 @@ function generateBBCode() {
     else unexcusedList.push(fullLine);
   });
 
-  let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]
-
-`;
+  let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]\n\n`;
 
   if (cfg.isTraining) {
-    bb += `[b]Trainingsleiter:[/b] ${leader}
-`;
-    bb += `[u]Schriftführer:[/u] ${scribe}
-
-`;
-    bb += `[b]Rangaufstiege:[/b] ${promotions}
-`;
-    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}
-
-`;
+    bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
+    bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
+    bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
+    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
   } else {
-    bb += `[b]Leitender Offizier:[/b] ${leader}
-`;
-    if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}
-`;
-    bb += `[u]Schriftführer:[/u] ${scribe}
-`;
-    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}
-
-`;
+    bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
+    if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
+    bb += `[u]Schriftführer:[/u] ${scribe}\n`;
+    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
   }
 
-  bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]
-`;
-  bb += (presentList.length ? presentList.join("
-") : "/") + "
+  bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
+  bb += (presentList.length ? presentList.join("\n") : "/") + "\n\n";
+  bb += `[b][i]In Summe:[/i][/b] ${presentList.length}\n\n`;
 
-";
-  bb += `[b][i]In Summe:[/i][/b] ${presentList.length}
+  bb += `[size=90][b][color=#804000]Entsatzspieler des Heeres, Landwehrmänner & Milizen:[/color][/b][/size]\n`;
+  bb += `${mercs}\n\n`;
 
-`;
+  bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/size][/b]\n`;
+  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\n";
+  bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
-  bb += `[size=90][b][color=#804000]Entsatzspieler des Heeres, Landwehrmänner & Milizen:[/color][/b][/size]
-`;
-  bb += `${mercs}
-
-`;
-
-  bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/size][/b]
-`;
-  bb += (excusedList.length ? excusedList.join("
-") : "/") + "
-
-";
-  bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}
-
-`;
-
-  bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]
-`;
-  bb += (unexcusedList.length ? unexcusedList.join("
-") : "/") + "
-
-";
+  bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
 
   if (cfg.isTraining) {
-    bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}
-
-`;
+    bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
   } else {
-    bb += `[b]Kurzzusammenfassung des Ereignisses:[/b] ${summary}
-
-`;
+    bb += `[b]Kurzzusammenfassung des Ereignisses:[/b] ${summary}\n\n`;
   }
 
-  bb += `[color=#408000]Positiv hervorzuheben[/color]: ${pos}
-`;
-  bb += `[color=#BF0040]Negativ hervorzuheben[/color]: ${neg}
-
-`;
+  bb += `[color=#408000]Positiv hervorzuheben[/color]: ${pos}\n`;
+  bb += `[color=#BF0040]Negativ hervorzuheben[/color]: ${neg}\n\n`;
   bb += `[i]Anmerkungen:[/i] ${notes}`;
 
   return bb;
