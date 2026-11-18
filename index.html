@@ -190,6 +190,7 @@
     padding: 1rem;
     text-align: center;
   }
+  .record-emoji-large { font-size: 1.8rem; line-height: 1.2; margin-bottom: 0.15rem; }
   .record-box h3 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0.2rem; }
   .record-details { font-size: 0.82rem; color: var(--text); }
@@ -473,17 +474,20 @@
           </div>
           <div class="record-box-grid">
             <div class="record-box">
-              <h3>📊 Regiments-Durchschnitt</h3>
+              <div class="record-emoji-large">Ø</div>
+              <h3>Regiments-Durchschnitt</h3>
               <div id="record-avg-val" class="record-value">0.0 TKs</div>
               <div id="record-avg-details" class="record-details">Pro Event</div>
             </div>
             <div class="record-box">
-              <h3>💂‍♂️💂‍♂️💂‍♂️ Regiments-Rekord</h3>
+              <div class="record-emoji-large">💂‍♂️💂‍♂️💂‍♂️</div>
+              <h3>Regiments-Rekord</h3>
               <div id="record-reg-val" class="record-value">0 TKs</div>
               <div id="record-reg-details" class="record-details">Gesamt pro Event</div>
             </div>
             <div class="record-box">
-              <h3>💀 Einzelspieler-Rekord</h3>
+              <div class="record-emoji-large">💀</div>
+              <h3>Einzelspieler-Rekord</h3>
               <div id="record-player-val" class="record-value">0 TKs</div>
               <div id="record-player-details" class="record-details">Max. an einem Event</div>
             </div>
@@ -1002,7 +1006,7 @@ function updateTkStatsFilterDropdown() {
   if (!select) return;
   const currentVal = select.value;
   
-  select.innerHTML = `<option value="all">Alle Events (mit TKs)</option>`;
+  select.innerHTML = `<option value="all">Alle Events</option>`;
 
   const tpls = getTemplates();
   for (const [key, cfg] of Object.entries(tpls)) {
@@ -1396,12 +1400,10 @@ function renderTkRecords() {
 
   let totalRegimentTK = 0;
   let maxEventTK = -1;
-  let bestEventLog = null;
+  let bestEventLogs = []; // Array für Gleichstände
 
   let maxPlayerTK = -1;
-  let bestPlayerName = "-";
-  let bestPlayerEventName = "-";
-  let bestPlayerDate = "-";
+  let bestPlayers = []; // Array für Spieler-Gleichstände
 
   logs.forEach(log => {
     let eventSum = 0;
@@ -1411,23 +1413,28 @@ function renderTkRecords() {
         eventSum += c;
         totalRegimentTK += c;
 
+        const cfg = tpls[log.format];
+        const eventName = cfg ? cfg.name : log.format;
+        const playerName = membersMap[mId] ? [membersMap[mId].napoName, membersMap[mId].breName].filter(Boolean).join(" / ") : "Unbekannt";
+        const dateStr = formatGermanDate(log.date);
+
         if (c > maxPlayerTK) {
           maxPlayerTK = c;
-          if (membersMap[mId]) {
-            bestPlayerName = [membersMap[mId].napoName, membersMap[mId].breName].filter(Boolean).join(" / ");
-          } else {
-            bestPlayerName = "Unbekannt";
+          bestPlayers = [{ name: playerName, event: eventName, date: dateStr }];
+        } else if (c === maxPlayerTK && c > 0) {
+          // Prüfen, ob exakt dieser Eintrag nicht doppelt hinzugefügt wird
+          if (!bestPlayers.some(p => p.name === playerName && p.event === eventName && p.date === dateStr)) {
+            bestPlayers.push({ name: playerName, event: eventName, date: dateStr });
           }
-          const cfg = tpls[log.format];
-          bestPlayerEventName = cfg ? cfg.name : log.format;
-          bestPlayerDate = formatGermanDate(log.date);
         }
       }
     }
 
     if (eventSum > maxEventTK) {
       maxEventTK = eventSum;
-      bestEventLog = log;
+      bestEventLogs = [log];
+    } else if (eventSum === maxEventTK && eventSum > 0) {
+      bestEventLogs.push(log);
     }
   });
 
@@ -1441,21 +1448,31 @@ function renderTkRecords() {
     avgDetailsEl.textContent = "Keine Daten";
   }
 
-  // 2. Regiments-Rekord (Gesamte TKs in einem Event)
-  if (bestEventLog && maxEventTK > 0) {
-    const cfg = tpls[bestEventLog.format];
-    const eventName = cfg ? cfg.name : bestEventLog.format;
+  // 2. Regiments-Rekord (inkl. Gleichstand)
+  if (bestEventLogs.length > 0 && maxEventTK > 0) {
     regValEl.textContent = `${maxEventTK} TKs`;
-    regDetailsEl.innerHTML = `<strong>${eventName}</strong><br>${formatGermanDate(bestEventLog.date)}`;
+    let detailsHtml = "";
+    bestEventLogs.forEach((l, idx) => {
+      const cfg = tpls[l.format];
+      const eventName = cfg ? cfg.name : l.format;
+      if (idx > 0) detailsHtml += `<hr style="border:0; border-top:1px dashed rgba(239,68,68,0.3); margin:4px 0;">`;
+      detailsHtml += `<strong>${eventName}</strong><br>${formatGermanDate(l.date)}`;
+    });
+    regDetailsEl.innerHTML = detailsHtml;
   } else {
     regValEl.textContent = "0 TKs";
     regDetailsEl.textContent = "Keine Daten";
   }
 
-  // 3. Einzelspieler-Rekord (Höchster Wert eines Spielers in einem Event)
-  if (maxPlayerTK > 0) {
+  // 3. Einzelspieler-Rekord (inkl. Gleichstand)
+  if (bestPlayers.length > 0 && maxPlayerTK > 0) {
     playerValEl.textContent = `${maxPlayerTK} TKs`;
-    playerDetailsEl.innerHTML = `<strong>${bestPlayerName}</strong><br>${bestPlayerEventName} (${bestPlayerDate})`;
+    let detailsHtml = "";
+    bestPlayers.forEach((bp, idx) => {
+      if (idx > 0) detailsHtml += `<hr style="border:0; border-top:1px dashed rgba(239,68,68,0.3); margin:4px 0;">`;
+      detailsHtml += `<strong>${bp.name}</strong><br>${bp.event} (${bp.date})`;
+    });
+    playerDetailsEl.innerHTML = detailsHtml;
   } else {
     playerValEl.textContent = "0 TKs";
     playerDetailsEl.textContent = "Keine Daten";
