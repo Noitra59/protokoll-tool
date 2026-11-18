@@ -3092,8 +3092,8 @@ function generateBriefingReport() {
   if (statAvgUnexcEl) statAvgUnexcEl.textContent = avgUnexcused;
   if (statAvgTkEl) statAvgTkEl.textContent = avgTeamkills;
   if (statTopEl) {
-    statTopEl.textContent = topMemberText;
-    statTopEl.title = topMemberText;
+    statTopEl.innerHTML = topMemberText;
+    statTopEl.title = topMembers.length > 0 ? topMembers.map(t => t.name).join("\n") : "Keine Daten";
   }
   if (statTopCountEl) statTopCountEl.textContent = topMemberCountText;
 }
