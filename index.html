@@ -581,11 +581,11 @@
       </table>
     </div>
 
-    <!-- Manuelle Jahres-Gesamtaktivität (Standardmäßig eingeklappt) -->
-    <details class="card" style="background: rgba(28, 31, 36, 0.7);">
+    <!-- Jahres-Gesamtaktivität manuell nachtragen (Einklappbar) -->
+    <details id="manual-att-details" class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onManualDetailsToggle(this)">
       <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
-        <span>📁 Manuelle Jahres-Gesamtaktivität nachtragen (Einklappbar)</span>
-        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
+        <span>📁 Jahres-Gesamtaktivität manuell nachtragen</span>
+        <span id="manual-summary-toggle-text" style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
       </summary>
       
       <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
@@ -830,11 +830,11 @@ let currentAttendance = {};
 let currentTkInputs = {};
 let isFirstLoad = true;
 
-// Sortierzustände für Tabellen
-let statsSortCol = "rate";
-let statsSortAsc = false;
-let tkStatsSortCol = "tk";
-let tkStatsSortAsc = false;
+// Sortierzustände für Tabellen (Standardwert für Mitglied ist jetzt null / Standard-Reihenfolge)
+let statsSortCol = null;
+let statsSortAsc = true;
+let tkStatsSortCol = null;
+let tkStatsSortAsc = true;
 
 function getTemplates() {
   if (appData.templates && Object.keys(appData.templates).length > 0) {
@@ -1606,7 +1606,6 @@ function renderTkStats() {
       }
     });
 
-    // Manuelle Jahres-Anwesenheiten (nur Nr59) einbeziehen
     if (filter === "all" && appData.manualAttendance) {
       if (yearFilter === "all") {
         Object.values(appData.manualAttendance).forEach(yearObj => {
@@ -1647,28 +1646,31 @@ function renderTkStats() {
     memberStats.push({ member: m, pres, totalTK, tkPerEventNum, tkPerEvent: tkPerEventNum.toFixed(2) });
   });
 
-  memberStats.sort((a, b) => {
-    let valA, valB;
-    if (tkStatsSortCol === 'name') {
-      valA = a.member.napoName || "";
-      valB = b.member.napoName || "";
-      return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else if (tkStatsSortCol === 'unit') {
-      valA = "Nr59";
-      valB = "Nr59";
-      return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else if (tkStatsSortCol === 'tk') {
-      valA = a.totalTK;
-      valB = b.totalTK;
-    } else if (tkStatsSortCol === 'pres') {
-      valA = a.pres;
-      valB = b.pres;
-    } else if (tkStatsSortCol === 'ratio') {
-      valA = a.tkPerEventNum;
-      valB = b.tkPerEventNum;
-    }
-    return tkStatsSortAsc ? (valA - valB) : (valB - valA);
-  });
+  // Sortierung: Wenn keine Spalte gewählt ist, gilt exakt die Reihenfolge der Mitgliederliste
+  if (tkStatsSortCol !== null) {
+    memberStats.sort((a, b) => {
+      let valA, valB;
+      if (tkStatsSortCol === 'name') {
+        valA = a.member.napoName || "";
+        valB = b.member.napoName || "";
+        return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else if (tkStatsSortCol === 'unit') {
+        valA = "Nr59";
+        valB = "Nr59";
+        return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else if (tkStatsSortCol === 'tk') {
+        valA = a.totalTK;
+        valB = b.totalTK;
+      } else if (tkStatsSortCol === 'pres') {
+        valA = a.pres;
+        valB = b.pres;
+      } else if (tkStatsSortCol === 'ratio') {
+        valA = a.tkPerEventNum;
+        valB = b.tkPerEventNum;
+      }
+      return tkStatsSortAsc ? (valA - valB) : (valB - valA);
+    });
+  }
 
   memberStats.forEach(item => {
     const m = item.member;
@@ -1795,7 +1797,7 @@ function generateBBCode() {
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n`;
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
 
   if (cfg.isTraining) {
     bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
@@ -1989,15 +1991,23 @@ async function deleteProtocol(id) {
 // ==========================================
 function getManualUnitData(yearObj, unit) {
   if (!yearObj) return null;
-  // Neues Format: { napo: { totalEvents: X, members: {...} }, bre: { totalEvents: Y, members: {...} } }
   if (yearObj[unit]) {
     return yearObj[unit];
   }
-  // Abwärtskompatibilität für altes Format direkt unter dem Jahr (war nur Nr59)
   if (unit === "napo" && !yearObj.napo && !yearObj.bre) {
     return { totalEvents: 0, members: yearObj };
   }
   return null;
+}
+
+function onManualDetailsToggle(detailsEl) {
+  const toggleText = document.getElementById("manual-summary-toggle-text");
+  if (!toggleText) return;
+  if (detailsEl.open) {
+    toggleText.textContent = "Klicken zum Einklappen";
+  } else {
+    toggleText.textContent = "Klicken zum Aufklappen";
+  }
 }
 
 function onStatsYearFilterChange() {
@@ -2071,6 +2081,7 @@ function renderStats() {
 
   const memberStats = [];
 
+  // Ausgangsreihenfolge entspricht exakt der Mitgliederliste (appData.members)
   (appData.members || []).filter(m => m.active && (m.inNapo || m.inBre)).forEach(m => {
     let total = 0, pres = 0, exc = 0, unexc = 0;
 
@@ -2084,7 +2095,6 @@ function renderStats() {
       }
     });
 
-    // Manuelle Jahres-Gesamtaktivität addieren (berücksichtigt Gesamteventanzahl der Einheit)
     if (appData.manualAttendance) {
       const yearsToProcess = yearFilter === "all"
         ? Object.keys(appData.manualAttendance)
@@ -2094,7 +2104,6 @@ function renderStats() {
         const yearObj = appData.manualAttendance[yr];
         if (!yearObj) return;
 
-        // Nr59 Anteil
         if (includeManualNapo && m.inNapo) {
           const napoData = getManualUnitData(yearObj, "napo");
           if (napoData && napoData.members && napoData.members[m.id]) {
@@ -2107,7 +2116,6 @@ function renderStats() {
 
             if (memberSum > 0 || unitTotalEvents > 0) {
               const effectiveTotal = Math.max(unitTotalEvents, memberSum);
-              // Fehlende Events bis zur Gesamteventanzahl werden als unentschuldigt gewertet, damit die Quote stimmt
               const diffUnexc = Math.max(0, effectiveTotal - memberSum);
               pres += pAdd;
               exc += eAdd;
@@ -2117,7 +2125,6 @@ function renderStats() {
           }
         }
 
-        // Eichenwacht Anteil
         if (includeManualBre && m.inBre) {
           const breData = getManualUnitData(yearObj, "bre");
           if (breData && breData.members && breData.members[m.id]) {
@@ -2144,7 +2151,6 @@ function renderStats() {
     if (total === 0) return;
     
     const rateNum = total > 0 ? Math.round((pres / total) * 100) : 0;
-    // Auch hier: Nur Nr59 Rang & Name anzeigen
     const nameLabel = m.napoName || m.breName || "";
     
     let unitBadges = "";
@@ -2154,34 +2160,37 @@ function renderStats() {
     memberStats.push({ member: m, nameLabel, unitBadges, total, pres, exc, unexc, rateNum });
   });
 
-  memberStats.sort((a, b) => {
-    let valA, valB;
-    if (statsSortCol === 'name') {
-      valA = a.nameLabel;
-      valB = b.nameLabel;
-      return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else if (statsSortCol === 'unit') {
-      valA = (a.member.inNapo ? "Nr59" : "") + (a.member.inBre ? "Eichenwacht" : "");
-      valB = (b.member.inNapo ? "Nr59" : "") + (b.member.inBre ? "Eichenwacht" : "");
-      return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-    } else if (statsSortCol === 'total') {
-      valA = a.total;
-      valB = b.total;
-    } else if (statsSortCol === 'pres') {
-      valA = a.pres;
-      valB = b.pres;
-    } else if (statsSortCol === 'exc') {
-      valA = a.exc;
-      valB = b.exc;
-    } else if (statsSortCol === 'unexc') {
-      valA = a.unexc;
-      valB = b.unexc;
-    } else if (statsSortCol === 'rate') {
-      valA = a.rateNum;
-      valB = b.rateNum;
-    }
-    return statsSortAsc ? (valA - valB) : (valB - valA);
-  });
+  // Nur wenn eine Spalte explizit angeklickt wurde sortieren, sonst Reihenfolge beibehalten
+  if (statsSortCol !== null) {
+    memberStats.sort((a, b) => {
+      let valA, valB;
+      if (statsSortCol === 'name') {
+        valA = a.nameLabel;
+        valB = b.nameLabel;
+        return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else if (statsSortCol === 'unit') {
+        valA = (a.member.inNapo ? "Nr59" : "") + (a.member.inBre ? "Eichenwacht" : "");
+        valB = (b.member.inNapo ? "Nr59" : "") + (b.member.inBre ? "Eichenwacht" : "");
+        return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      } else if (statsSortCol === 'total') {
+        valA = a.total;
+        valB = b.total;
+      } else if (statsSortCol === 'pres') {
+        valA = a.pres;
+        valB = b.pres;
+      } else if (statsSortCol === 'exc') {
+        valA = a.exc;
+        valB = b.exc;
+      } else if (statsSortCol === 'unexc') {
+        valA = a.unexc;
+        valB = b.unexc;
+      } else if (statsSortCol === 'rate') {
+        valA = a.rateNum;
+        valB = b.rateNum;
+      }
+      return statsSortAsc ? (valA - valB) : (valB - valA);
+    });
+  }
 
   memberStats.forEach(item => {
     const rate = item.rateNum;
@@ -2409,7 +2418,6 @@ async function saveManualAttendance() {
   if (!appData.manualAttendance) appData.manualAttendance = {};
   if (!appData.manualAttendance[year]) appData.manualAttendance[year] = {};
 
-  // Falls altes Format unter diesem Jahr existiert, sauber in neues Objekt überführen
   if (!appData.manualAttendance[year].napo && !appData.manualAttendance[year].bre && Object.keys(appData.manualAttendance[year]).length > 0) {
     const legacyMembers = { ...appData.manualAttendance[year] };
     appData.manualAttendance[year] = {
