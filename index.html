@@ -903,8 +903,8 @@ let isFirstLoad = true;
 // Sortierzustände für Tabellen
 let statsSortCol = null;
 let statsSortAsc = true;
-let tkStatsSortCol = null;
-let tkStatsSortAsc = true;
+let tkStatsSortCol = 'tk';
+let tkStatsSortAsc = false;
 
 function getTemplates() {
   if (appData.templates && Object.keys(appData.templates).length > 0) {
@@ -1548,7 +1548,7 @@ function renderTkHistory() {
       </td>
       <td style="color:var(--danger); font-weight:700;">${sumTK}</td>
       <td style="display:flex; gap:0.4rem;">
-        <button class="btn btn-sm" onclick="editTkLog('${log.id}')">✏️ Laden</button>
+        <button class="btn btn-sm" onclick="editTkLog('${log.id}')">✏️ Bearbeiten</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTkLog('${log.id}')">🗑️</button>
       </td>
     `;
