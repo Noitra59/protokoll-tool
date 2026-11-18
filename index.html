@@ -642,7 +642,7 @@
 
       <!-- Regiments-Briefing / Report Box (Kompakt im Grid) -->
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
-        <div id="briefing-visual-output" style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.75rem;">
+        <div id="briefing-visual-output" style="display: grid; grid-template-columns: 0.8fr 0.9fr 0.9fr 0.9fr 0.8fr 1.7fr; gap: 0.75rem;">
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
             <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Events</div>
             <div id="briefing-stat-events" style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">0</div>
@@ -656,7 +656,7 @@
             <div id="briefing-stat-avg-exc" style="font-size: 1.2rem; font-weight: 800; color: var(--warning);">0.0</div>
           </div>
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Ø Unentschl.</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Ø Unentsch.</div>
             <div id="briefing-stat-avg-unexc" style="font-size: 1.2rem; font-weight: 800; color: var(--danger);">0.0</div>
           </div>
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
@@ -664,8 +664,8 @@
             <div id="briefing-stat-avg-tk" style="font-size: 1.2rem; font-weight: 800; color: #a855f7;">0.0</div>
           </div>
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
-            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Aktivster</div>
-            <div id="briefing-stat-top" style="font-size: 0.95rem; font-weight: 700; color: var(--warning); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="Keine Daten">Keine</div>
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Aktivster Soldat</div>
+            <div id="briefing-stat-top" style="font-size: 0.85rem; font-weight: 700; color: var(--warning); line-height: 1.2;" title="Keine Daten">Keine</div>
             <div id="briefing-stat-top-count" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem;">0 Teile</div>
           </div>
         </div>
@@ -3074,7 +3074,7 @@ function generateBriefingReport() {
   let topMemberCountText = "0 Teile";
 
   if (topMembers.length > 0) {
-    topMemberText = topMembers.map(t => t.name).join(", ");
+    topMemberText = topMembers.map(t => t.name).join("<br>");
     topMemberCountText = `${maxCount} Teile`;
   }
 
