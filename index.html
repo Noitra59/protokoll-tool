@@ -1374,8 +1374,17 @@ function isMemberDefaultExcused(member, fmtKey) {
   }
 
   if (isPerm) {
-    return !hasSpecificEvent || matchesCurrentEvent;
+    // Wenn permExcused aktiv ist, greift es NUR, wenn ein spezifisches Event gewählt ist und zum aktuellen Event passt!
+    // "Alle Events" (all) soll nicht mehr pauschal alle Events sperren, es sei denn, es ist explizit gewünscht (oder wir verlangen ein echtes Event).
+    if (!hasSpecificEvent) {
+      // Wenn kein spezifisches Event gewählt ist, aber permExcused an ist, greift es standardmäßig beim ERSTEN Event (oder gar nicht bei allen Events wahllos)
+      const tpls = getTemplates();
+      const firstKey = Object.keys(tpls)[0];
+      return fmtKey === firstKey;
+    }
+    return matchesCurrentEvent;
   }
+
   if (hasSpecificEvent && matchesCurrentEvent) {
     return true;
   }
@@ -2847,10 +2856,11 @@ async function updateMember(id, field, value) {
     if (field === "permExcused") {
       if (value === true && (!m.permExcusedEvent || m.permExcusedEvent === "all")) {
         const formatEl = document.getElementById("proto-format");
-        if (formatEl && formatEl.value) {
-          m.permExcusedEvent = formatEl.value;
-          saveLocalExcusedEvent(id, formatEl.value);
-        }
+        const tpls = getTemplates();
+        const firstEventKey = Object.keys(tpls)[0] || "tue_hli";
+        const targetEv = (formatEl && formatEl.value) ? formatEl.value : firstEventKey;
+        m.permExcusedEvent = targetEv;
+        saveLocalExcusedEvent(id, targetEv);
       }
     }
     if (field === "permExcusedEvent") {
