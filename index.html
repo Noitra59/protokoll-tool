@@ -621,6 +621,13 @@
               <option value="all">Alle Jahre</option>
             </select>
           </div>
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <label style="margin:0;">Zeitraum:</label>
+            <input type="date" id="stats-date-from" onchange="onStatsYearFilterChange()" style="width:auto; padding:0.35rem 0.5rem; font-size:0.85rem;" title="Von Datum">
+            <span style="color:var(--text-muted);">-</span>
+            <input type="date" id="stats-date-to" onchange="onStatsYearFilterChange()" style="width:auto; padding:0.35rem 0.5rem; font-size:0.85rem;" title="Bis Datum">
+            <button class="btn btn-secondary btn-sm" onclick="clearStatsDateRange()" title="Zeitraum zurücksetzen">✕</button>
+          </div>
         </div>
       </div>
 
@@ -1748,11 +1755,11 @@ function renderTkStats() {
   const tpls = getTemplates();
   const filteredProtocols = (appData.protocols || []).filter(p => {
     const cfg = tpls[p.format];
-    return cfg && cfg.unit === "napo" && matchesStatsFilters(p, filter, yearFilter);
+    return cfg && cfg.unit === "napo" && matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo);
   });
   const filteredTkLogs = (appData.teamkillLogs || []).filter(t => {
     const cfg = tpls[t.format];
-    return cfg && cfg.unit === "napo" && matchesStatsFilters(t, filter, yearFilter);
+    return cfg && cfg.unit === "napo" && matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo);
   });
 
   const memberStats = [];
@@ -2179,7 +2186,7 @@ function onStatsYearFilterChange() {
   renderStatsChart();
 }
 
-function matchesStatsFilters(item, filter, yearFilter) {
+function matchesStatsFilters(item, filter, yearFilter, dateFrom, dateTo) {
   const tpls = getTemplates();
   const cfg = tpls[item.format];
 
@@ -2198,7 +2205,21 @@ function matchesStatsFilters(item, filter, yearFilter) {
     matchesYear = (itemYear === yearFilter);
   }
 
-  return matchesEvent && matchesYear;
+  let matchesRange = true;
+  if (item.date) {
+    if (dateFrom && item.date < dateFrom) matchesRange = false;
+    if (dateTo && item.date > dateTo) matchesRange = false;
+  }
+
+  return matchesEvent && matchesYear && matchesRange;
+}
+
+function clearStatsDateRange() {
+  const df = document.getElementById("stats-date-from");
+  const dt = document.getElementById("stats-date-to");
+  if (df) df.value = "";
+  if (dt) dt.value = "";
+  onStatsYearFilterChange();
 }
 
 function sortStatsTable(col) {
@@ -2233,7 +2254,7 @@ function renderStats() {
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
 
-  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo));
 
   const includeManualNapo = (filter === "all" || filter === "napo_all");
   const includeManualBre = (filter === "all" || filter === "bre_all");
@@ -2389,7 +2410,7 @@ function renderStatsChart() {
   (appData.protocols || []).forEach(p => {
     const cfg = tpls[p.format];
     if (!cfg || cfg.unit !== "napo") return;
-    if (!matchesStatsFilters(p, filter, yearFilter)) return;
+    if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${p.date}_${p.format}`;
     if (!eventsByKey[key]) {
@@ -2407,7 +2428,7 @@ function renderStatsChart() {
   (appData.teamkillLogs || []).forEach(t => {
     const cfg = tpls[t.format];
     if (!cfg || cfg.unit !== "napo") return;
-    if (!matchesStatsFilters(t, filter, yearFilter)) return;
+    if (!matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${t.date}_${t.format}`;
     if (!eventsByKey[key]) {
@@ -2954,7 +2975,7 @@ function generateBriefingReport() {
   if (briefingLabelEl) briefingLabelEl.textContent = periodName;
 
   const tpls = getTemplates();
-  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo));
 
   let totalEventsCount = filteredProtocols.length;
   let totalPresenceSum = 0;
@@ -2974,7 +2995,7 @@ function generateBriefingReport() {
   const includeManualNapo = (filter === "all" || filter === "napo_all" || (tpls[filter] && tpls[filter].unit === "napo"));
   const includeManualBre = (filter === "all" || filter === "bre_all" || (tpls[filter] && tpls[filter].unit === "bre"));
 
-  if (appData.manualAttendance) {
+  if (appData.manualAttendance && !dateFrom && !dateTo) {
     const yearsToProcess = yearFilter === "all"
       ? Object.keys(appData.manualAttendance)
       : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
@@ -3052,13 +3073,7 @@ function generateBriefingReport() {
   }
 }
 
-function copyBriefingReport() {
-  const briefingOutputEl = document.getElementById("briefing-output");
-  if (!briefingOutputEl) return;
-  briefingOutputEl.select();
-  navigator.clipboard.writeText(briefingOutputEl.value);
-  showToast("Regiments-Report in die Zwischenablage kopiert!");
-}
+
 
 // Start beim Laden der Seite
 initEditor();
