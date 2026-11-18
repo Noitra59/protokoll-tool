@@ -407,7 +407,7 @@
 
           <div class="form-group" id="grp-mercs" style="margin-top: 1.25rem; border-top: 1px solid var(--border); padding-top: 1rem;">
             <label>Entsatzspieler / Milizen</label>
-            <input type="text" id="proto-mercs" value="" oninput="updateOutput()">
+            <input type="text" id="proto-mercs" value="/" autocomplete="off" oninput="updateOutput()">
           </div>
         </div>
 
@@ -415,7 +415,7 @@
           <h2>3. Bericht & Fazit</h2>
           <div class="form-group">
             <label id="lbl-summary">Kurzzusammenfassung des Ereignisses</label>
-            <textarea id="proto-summary" rows="3" oninput="updateOutput()"></textarea>
+            <textarea id="proto-summary" rows="3" autocomplete="off" oninput="updateOutput()"></textarea>
           </div>
           <div class="grid-2" style="gap: 0.75rem;">
             <div class="form-group">
@@ -1077,6 +1077,10 @@ function switchTab(tabId, btnElement) {
 }
 
 function initEditor() {
+  const initSummaryEl = document.getElementById("proto-summary");
+  if (initSummaryEl) initSummaryEl.value = "";
+  const initMercsEl = document.getElementById("proto-mercs");
+  if (initMercsEl) initMercsEl.value = "/";
   const today = new Date().toISOString().split("T")[0];
   const dateEl = document.getElementById("proto-date");
   const tkDateEl = document.getElementById("tk-date");
@@ -1319,7 +1323,7 @@ function onFormatChange(resetFields = true) {
     if (leaderEl) leaderEl.value = cfg.defaultLeader || "";
     if (scribeEl) scribeEl.value = cfg.defaultScribe || "";
     if (troopEl) troopEl.value = cfg.defaultTroop || "";
-    if (mercsEl) mercsEl.value = "";
+    if (mercsEl) mercsEl.value = "/";
     if (summaryEl) summaryEl.value = "";
   }
 
