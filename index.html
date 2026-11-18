@@ -1431,14 +1431,13 @@ function onFormatChange(resetFields = true) {
     if (summaryEl) summaryEl.value = "";
   }
 
-  if (editProtoId && !editProtoId.value) {
-    currentAttendance = {};
-    const unit = cfg.unit;
-    (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
-      let initialStatus = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
-      currentAttendance[m.id] = { status: initialStatus, note: "" };
-    });
-  }
+  // Bei jedem Formatwechsel die Anwesenheit für das neue Format frisch initialisieren
+  currentAttendance = {};
+  const unit = cfg.unit;
+  (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
+    let initialStatus = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
+    currentAttendance[m.id] = { status: initialStatus, note: "" };
+  });
 
   renderAttendanceList();
   updateOutput();
