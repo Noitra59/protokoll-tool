@@ -787,7 +787,7 @@
     </div>
 
     <div class="card">
-      <h2>Mitglieder verwalten (Reihenfolge & Permalink-Abwesenheit)</h2>
+      <h2>Mitglieder verwalten</h2>
       <div style="overflow-x: auto;">
         <table>
           <thead>
@@ -1357,37 +1357,27 @@ function normalizeBool(val) {
 function isMemberDefaultExcused(member, fmtKey) {
   if (!member) return false;
   const isPerm = normalizeBool(member.permExcused);
-  const rawEv = (member.permExcusedEvent || "").toString().trim();
-  const hasSpecificEvent = rawEv !== "" && rawEv.toLowerCase() !== "all";
+  if (!isPerm) return false;
 
-  let matchesCurrentEvent = false;
-  if (hasSpecificEvent && fmtKey) {
-    if (rawEv === fmtKey || rawEv.toLowerCase() === fmtKey.toLowerCase()) {
-      matchesCurrentEvent = true;
-    } else {
-      const tpls = getTemplates();
-      const cfg = tpls[fmtKey];
-      if (cfg && cfg.name && cfg.name.trim().toLowerCase() === rawEv.toLowerCase()) {
-        matchesCurrentEvent = true;
-      }
-    }
-  }
-
-  if (isPerm) {
-    // Wenn permExcused aktiv ist, greift es NUR, wenn ein spezifisches Event gewählt ist und zum aktuellen Event passt!
-    // "Alle Events" (all) soll nicht mehr pauschal alle Events sperren, es sei denn, es ist explizit gewünscht (oder wir verlangen ein echtes Event).
-    if (!hasSpecificEvent) {
-      // Wenn kein spezifisches Event gewählt ist, aber permExcused an ist, greift es standardmäßig beim ERSTEN Event (oder gar nicht bei allen Events wahllos)
-      const tpls = getTemplates();
-      const firstKey = Object.keys(tpls)[0];
-      return fmtKey === firstKey;
-    }
-    return matchesCurrentEvent;
-  }
-
-  if (hasSpecificEvent && matchesCurrentEvent) {
+  const rawEv = (member.permExcusedEvent || "").toString().trim().toLowerCase();
+  
+  // Wenn "all" gewählt ist oder kein spezifisches Event (oder "alle events"), gilt es für JEDES Event!
+  if (rawEv === "" || rawEv === "all" || rawEv === "alle events") {
     return true;
   }
+
+  // Ansonsten prüfen, ob das gewählte spezifische Event mit dem aktuellen Event (fmtKey oder Event-Name) übereinstimmt
+  if (fmtKey) {
+    if (rawEv === fmtKey.toLowerCase()) {
+      return true;
+    }
+    const tpls = getTemplates();
+    const cfg = tpls[fmtKey];
+    if (cfg && cfg.name && cfg.name.trim().toLowerCase() === rawEv) {
+      return true;
+    }
+  }
+
   return false;
 }
 
