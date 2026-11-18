@@ -635,6 +635,17 @@
         <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
       </div>
 
+      <!-- Regiments-Briefing / Report Box -->
+      <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:0.75rem;">
+          <h3 style="font-size: 1rem; color: var(--text); display:flex; align-items:center; gap:0.5rem; margin:0;">
+            <span>📋 Regiments-Briefing & Report (<span id="briefing-period-label">Gesamt</span>)</span>
+          </h3>
+          <button class="btn btn-secondary btn-sm" onclick="copyBriefingReport()">📋 Report kopieren</button>
+        </div>
+        <textarea id="briefing-output" class="bbcode-raw" style="height: 140px; margin-bottom: 0;" readonly></textarea>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -2186,6 +2197,7 @@ function sortStatsTable(col) {
 }
 
 function renderStats() {
+  generateBriefingReport();
   const statsFilterEl = document.getElementById("stats-filter");
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const tbody = document.getElementById("stats-table-body");
@@ -2895,6 +2907,131 @@ function exportBackup() {
   document.body.appendChild(downloadAnchor);
   downloadAnchor.click();
   downloadAnchor.remove();
+}
+
+
+function generateBriefingReport() {
+  const statsFilterEl = document.getElementById("stats-filter");
+  const statsYearFilterEl = document.getElementById("stats-year-filter");
+  const briefingLabelEl = document.getElementById("briefing-period-label");
+  const briefingOutputEl = document.getElementById("briefing-output");
+  if (!briefingOutputEl) return;
+
+  const filter = statsFilterEl ? statsFilterEl.value : "all";
+  const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
+
+  let periodName = "Gesamt";
+  if (yearFilter !== "all") {
+    periodName = yearFilter;
+    if (filter === "napo_all") periodName += " (Nr59)";
+    else if (filter === "bre_all") periodName += " (Eichenwacht)";
+    else if (filter !== "all") {
+      const tpls = getTemplates();
+      if (tpls[filter]) periodName += ` (${tpls[filter].name})`;
+    }
+  } else {
+    if (filter === "napo_all") periodName = "Alle Nr59-Events";
+    else if (filter === "bre_all") periodName = "Alle Eichenwacht-Events";
+    else if (filter !== "all") {
+      const tpls = getTemplates();
+      if (tpls[filter]) periodName = tpls[filter].name;
+    }
+  }
+  if (briefingLabelEl) briefingLabelEl.textContent = periodName;
+
+  const tpls = getTemplates();
+  const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter));
+
+  let totalEventsCount = filteredProtocols.length;
+  let totalPresenceSum = 0;
+  let memberPresenceCounts = {};
+
+  filteredProtocols.forEach(p => {
+    if (p.attendance) {
+      Object.entries(p.attendance).forEach(([mId, a]) => {
+        if (a.status === "present") {
+          totalPresenceSum++;
+          memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + 1;
+        }
+      });
+    }
+  });
+
+  const includeManualNapo = (filter === "all" || filter === "napo_all" || (tpls[filter] && tpls[filter].unit === "napo"));
+  const includeManualBre = (filter === "all" || filter === "bre_all" || (tpls[filter] && tpls[filter].unit === "bre"));
+
+  if (appData.manualAttendance) {
+    const yearsToProcess = yearFilter === "all"
+      ? Object.keys(appData.manualAttendance)
+      : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
+
+    yearsToProcess.forEach(yr => {
+      const yearObj = appData.manualAttendance[yr];
+      if (!yearObj) return;
+
+      if (includeManualNapo) {
+        const napoData = getManualUnitData(yearObj, "napo");
+        if (napoData) {
+          totalEventsCount += (parseInt(napoData.totalEvents) || 0);
+          if (napoData.members) {
+            Object.entries(napoData.members).forEach(([mId, md]) => {
+              const pAdd = parseInt(md.present) || 0;
+              totalPresenceSum += pAdd;
+              memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + pAdd;
+            });
+          }
+        }
+      }
+
+      if (includeManualBre) {
+        const breData = getManualUnitData(yearObj, "bre");
+        if (breData) {
+          totalEventsCount += (parseInt(breData.totalEvents) || 0);
+          if (breData.members) {
+            Object.entries(breData.members).forEach(([mId, md]) => {
+              const pAdd = parseInt(md.present) || 0;
+              totalPresenceSum += pAdd;
+              memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + pAdd;
+            });
+          }
+        }
+      }
+    });
+  }
+
+  const avgAttendance = totalEventsCount > 0 ? (totalPresenceSum / totalEventsCount).toFixed(1) : "0.0";
+
+  let topMemberName = "Keine Daten";
+  let topMemberCount = -1;
+  
+  const membersMap = {};
+  (appData.members || []).forEach(m => membersMap[m.id] = m);
+
+  Object.entries(memberPresenceCounts).forEach(([mId, count]) => {
+    if (count > topMemberCount) {
+      topMemberCount = count;
+      const m = membersMap[mId];
+      if (m) {
+        topMemberName = (filter.includes("bre") ? (m.breName || m.napoName) : (m.napoName || m.breName)) || "Unbekannt";
+      }
+    }
+  });
+
+  let reportText = `📜 Regiments-Briefing & Report — Zeitraum: [b]${periodName}[/b]\n\n`;
+  reportText += `• [b]Durchgeführte Events:[/b] ${totalEventsCount}\n`;
+  reportText += `• [b]Durchschnittliche Anwesenheit:[/b] ${avgAttendance} Spieler pro Event\n`;
+  reportText += `• [b]Aktivster Soldat:[/b] ${topMemberName} (${topMemberCount} Teilnahmen)\n\n`;
+  reportText += `[i]Erstellt mit dem k.k. Protokoll-Manager[/i]`;
+
+  briefingOutputEl.value = reportText.replace(/\\n/g, '\n');
+}
+
+function copyBriefingReport() {
+  const briefingOutputEl = document.getElementById("briefing-output");
+  if (!briefingOutputEl) return;
+  briefingOutputEl.select();
+  navigator.clipboard.writeText(briefingOutputEl.value);
+  showToast("Regiments-Report in die Zwischenablage kopiert!");
 }
 
 // Start beim Laden der Seite
