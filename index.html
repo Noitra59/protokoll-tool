@@ -191,7 +191,7 @@
     text-align: center;
   }
   .record-emoji-large { font-size: 1.8rem; line-height: 1.2; margin-bottom: 0.15rem; }
-  .record-box h3 { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
+  .record-box h3 { font-size: 0.8rem; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.3rem; }
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0.2rem; }
   .record-details { font-size: 0.82rem; color: var(--text); }
 
@@ -1422,7 +1422,6 @@ function renderTkRecords() {
           maxPlayerTK = c;
           bestPlayers = [{ name: playerName, event: eventName, date: dateStr }];
         } else if (c === maxPlayerTK && c > 0) {
-          // Prüfen, ob exakt dieser Eintrag nicht doppelt hinzugefügt wird
           if (!bestPlayers.some(p => p.name === playerName && p.event === eventName && p.date === dateStr)) {
             bestPlayers.push({ name: playerName, event: eventName, date: dateStr });
           }
