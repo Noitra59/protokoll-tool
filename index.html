@@ -574,6 +574,31 @@
           </table>
         </div>
 
+        <!-- NEU: MITGLIEDER-TEAMKILL-HISTORIE -->
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
+            <h2 style="border:none; margin:0; padding:0;">Mitglieder-Teamkill-Historie</h2>
+            <div style="display:flex; gap:0.5rem; align-items:center;">
+              <select id="tk-member-history-select" onchange="renderMemberTkHistory()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;"></select>
+            </div>
+          </div>
+          <div style="margin-bottom: 0.75rem; font-size: 0.85rem; color: var(--text-muted);" id="tk-member-total-info">
+            Gesamt Teamkills: <strong>0</strong>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Datum</th>
+                <th>Event</th>
+                <th style="color:var(--danger);">Teamkills</th>
+              </tr>
+            </thead>
+            <tbody id="tk-member-history-body">
+              <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte Mitglied auswählen.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
         <!-- EINGEKLAPPTE GESPEICHERTE TEAMKILL-EINTRÄGE -->
         <details class="card" style="background: rgba(28, 31, 36, 0.7);">
           <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
@@ -1014,6 +1039,8 @@ async function loadFromCloud(manual = false) {
   renderTkHistory();
   renderTkStats();
   renderTkRecords();
+  updateTkMemberHistoryDropdown();
+  renderMemberTkHistory();
   renderStats();
   renderStatsChart();
   renderManualAttendanceList();
@@ -1066,6 +1093,8 @@ function switchTab(tabId, btnElement) {
   if (btnElement) btnElement.classList.add("active");
 
   if (tabId === "teamkills") {
+    updateTkMemberHistoryDropdown();
+    renderMemberTkHistory();
     updateTkFormatDropdown();
     updateTkStatsFilterDropdown();
     updateStatsYearDropdown();
@@ -2815,6 +2844,15 @@ async function updateMember(id, field, value) {
   const m = (appData.members || []).find(x => x.id === id);
   if (m) {
     m[field] = value;
+    if (field === "permExcused") {
+      if (value === true && (!m.permExcusedEvent || m.permExcusedEvent === "all")) {
+        const formatEl = document.getElementById("proto-format");
+        if (formatEl && formatEl.value) {
+          m.permExcusedEvent = formatEl.value;
+          saveLocalExcusedEvent(id, formatEl.value);
+        }
+      }
+    }
     if (field === "permExcusedEvent") {
       saveLocalExcusedEvent(id, value);
     }
@@ -3176,6 +3214,76 @@ function generateBriefingReport() {
     statTopEl.title = topMembers.length > 0 ? topMembers.map(t => t.name).join("\n") : "Keine Daten";
   }
   if (statTopCountEl) statTopCountEl.textContent = topMemberCountText;
+}
+
+
+function updateTkMemberHistoryDropdown() {
+  const select = document.getElementById("tk-member-history-select");
+  if (!select) return;
+  const currentVal = select.value;
+  select.innerHTML = `<option value="">-- Mitglied wählen --</option>`;
+
+  (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = m.napoName || "Unbekannt";
+    select.appendChild(opt);
+  });
+
+  if (select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  }
+}
+
+function renderMemberTkHistory() {
+  const select = document.getElementById("tk-member-history-select");
+  const tbody = document.getElementById("tk-member-history-body");
+  const infoEl = document.getElementById("tk-member-total-info");
+  if (!select || !tbody) return;
+
+  const mId = select.value;
+  if (!mId) {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte Mitglied auswählen.</td></tr>`;
+    if (infoEl) infoEl.innerHTML = `Gesamt Teamkills: <strong>0</strong>`;
+    return;
+  }
+
+  const tpls = getTemplates();
+  const logs = (appData.teamkillLogs || []).filter(l => {
+    const cfg = tpls[l.format];
+    return cfg && cfg.unit === "napo";
+  }).sort((a, b) => b.date.localeCompare(a.date));
+
+  let totalTK = 0;
+  let rowsHtml = "";
+
+  logs.forEach(log => {
+    if (log.records && log.records[mId]) {
+      const count = parseInt(log.records[mId].count) || 0;
+      if (count > 0) {
+        totalTK += count;
+        const cfg = tpls[log.format];
+        const eventName = cfg ? cfg.name : log.format;
+        rowsHtml += `
+          <tr>
+            <td><strong>${formatGermanDate(log.date)}</strong></td>
+            <td>${eventName}</td>
+            <td style="color:var(--danger); font-weight:700;">${count}</td>
+          </tr>
+        `;
+      }
+    }
+  });
+
+  if (rowsHtml === "") {
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Keine Teamkills für dieses Mitglied erfasst.</td></tr>`;
+  } else {
+    tbody.innerHTML = rowsHtml;
+  }
+
+  if (infoEl) {
+    infoEl.innerHTML = `Gesamt Teamkills: <strong style="color:var(--danger);">${totalTK}</strong>`;
+  }
 }
 
 initEditor();
