@@ -446,6 +446,11 @@
           
           <input type="hidden" id="edit-tk-id" value="">
 
+          <div id="tk-mode-banner" class="mode-indicator new">
+            <span>✨ Modus: Neue Teamkills erfassen</span>
+            <button class="btn btn-sm btn-secondary" id="btn-cancel-tk-edit" style="display:none;" onclick="resetTkEditorMode()">Abbrechen</button>
+          </div>
+
           <div class="grid-2" style="gap: 0.75rem;">
             <div class="form-group">
               <label>Event-Format</label>
@@ -1172,6 +1177,33 @@ function resetEditorMode() {
   showToast("Zu neuem Protokoll gewechselt.");
 }
 
+function updateTkEditorModeIndicator() {
+  const editId = document.getElementById("edit-tk-id").value;
+  const banner = document.getElementById("tk-mode-banner");
+  const cancelBtn = document.getElementById("btn-cancel-tk-edit");
+  if (!banner) return;
+
+  if (editId) {
+    banner.className = "mode-indicator edit";
+    banner.innerHTML = `<span>✏️ Modus: Vorhandener Teamkill-Eintrag wird bearbeitet</span>`;
+    banner.appendChild(cancelBtn);
+    cancelBtn.style.display = "inline-block";
+  } else {
+    banner.className = "mode-indicator new";
+    banner.innerHTML = `<span>✨ Modus: Neue Teamkills erfassen</span>`;
+    cancelBtn.style.display = "none";
+  }
+}
+
+function resetTkEditorMode() {
+  document.getElementById("edit-tk-id").value = "";
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("tk-date").value = today;
+  loadExistingTkForDate();
+  updateTkEditorModeIndicator();
+  showToast("Zu neuer Teamkill-Erfassung gewechselt.");
+}
+
 function onFormatChange(resetFields = true) {
   const formatEl = document.getElementById("proto-format");
   if (!formatEl) return;
@@ -1329,6 +1361,7 @@ function loadExistingTkForDate() {
     if (editTkIdEl) editTkIdEl.value = "";
     currentTkInputs = {};
   }
+  updateTkEditorModeIndicator();
   renderTkList();
 }
 
@@ -1416,6 +1449,7 @@ async function saveTeamkillLog() {
   if (editTkIdEl) editTkIdEl.value = logObj.id;
 
   await saveToCloud();
+  updateTkEditorModeIndicator();
   renderTkHistory();
   renderTkStats();
   renderTkRecords();
@@ -1510,7 +1544,6 @@ function renderTkRecords() {
   (appData.members || []).filter(m => m.inNapo).forEach(m => membersMap[m.id] = m);
 
   let totalRegimentTK = 0;
-  let formatTotals = {};
   let maxEventTK = -1;
   let bestEventLogs = [];
 
@@ -1521,10 +1554,6 @@ function renderTkRecords() {
     let eventSum = 0;
     const cfg = tpls[log.format];
     const eventName = cfg ? cfg.name : log.format;
-
-    if (!formatTotals[log.format]) {
-      formatTotals[log.format] = { name: eventName, sum: 0, count: 0 };
-    }
 
     if (log.records) {
       for (const [mId, rec] of Object.entries(log.records)) {
@@ -1547,9 +1576,6 @@ function renderTkRecords() {
       }
     }
 
-    formatTotals[log.format].sum += eventSum;
-    formatTotals[log.format].count += 1;
-
     if (eventSum > maxEventTK) {
       maxEventTK = eventSum;
       bestEventLogs = [log];
@@ -1561,18 +1587,10 @@ function renderTkRecords() {
   if (logs.length > 0) {
     const avg = (totalRegimentTK / logs.length).toFixed(2);
     avgValEl.textContent = `${avg} TKs`;
-    
-    let detailsHtml = `Über ${logs.length} erfasste Events`;
-    for (const [fmtKey, fData] of Object.entries(formatTotals)) {
-      if (fData.count > 0) {
-        const fAvg = (fData.sum / fData.count).toFixed(2);
-        detailsHtml += `<br><span style="font-size:0.75rem; opacity:0.85;">${fData.name}: ${fAvg} TKs</span>`;
-      }
-    }
-    avgDetailsEl.innerHTML = detailsHtml;
+    avgDetailsEl.textContent = `Pro Event`;
   } else {
     avgValEl.textContent = "0.0 TKs";
-    avgDetailsEl.textContent = "Keine Daten";
+    avgDetailsEl.textContent = "Pro Event";
   }
 
   if (bestEventLogs.length > 0 && maxEventTK > 0) {
@@ -1587,7 +1605,7 @@ function renderTkRecords() {
     regDetailsEl.innerHTML = detailsHtml;
   } else {
     regValEl.textContent = "0 TKs";
-    regDetailsEl.textContent = "Keine Daten";
+    regDetailsEl.textContent = "Gesamt pro Event";
   }
 
   if (bestPlayers.length > 0 && maxPlayerTK > 0) {
@@ -1600,7 +1618,7 @@ function renderTkRecords() {
     playerDetailsEl.innerHTML = detailsHtml;
   } else {
     playerValEl.textContent = "0 TKs";
-    playerDetailsEl.textContent = "Keine Daten";
+    playerDetailsEl.textContent = "Max. an einem Event";
   }
 }
 
@@ -1748,6 +1766,7 @@ function editTkLog(id) {
   if (tkDateEl) tkDateEl.value = log.date;
   if (editTkIdEl) editTkIdEl.value = log.id;
   currentTkInputs = JSON.parse(JSON.stringify(log.records || {}));
+  updateTkEditorModeIndicator();
   renderTkList();
   showToast("Teamkill-Eintrag geladen.");
 }
@@ -2161,12 +2180,10 @@ function renderStats() {
             const unitTotalEvents = parseInt(napoData.totalEvents) || 0;
 
             if (memberSum > 0 || unitTotalEvents > 0) {
-              const effectiveTotal = Math.max(unitTotalEvents, memberSum);
-              // Keine automatische Auffüllung mehr als unentschuldigt (diffUnexc entfernt)
               pres += pAdd;
               exc += eAdd;
               unexc += uAdd;
-              total += memberSum; // Zählt nur die tatsächlich eingetragene Summe statt künstlich auf Gesamt-Events aufzublähen
+              total += memberSum;
             }
           }
         }
@@ -2182,7 +2199,6 @@ function renderStats() {
             const unitTotalEvents = parseInt(breData.totalEvents) || 0;
 
             if (memberSum > 0 || unitTotalEvents > 0) {
-              const effectiveTotal = Math.max(unitTotalEvents, memberSum);
               pres += pAdd;
               exc += eAdd;
               unexc += uAdd;
