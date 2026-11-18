@@ -1287,6 +1287,19 @@ function resetTkEditorMode() {
   showToast("Zu neuer Teamkill-Erfassung gewechselt.");
 }
 
+function isMemberDefaultExcused(member, fmtKey) {
+  if (!member) return false;
+  const ev = member.permExcusedEvent;
+  const hasSpecificEvent = ev && ev !== "all";
+  if (member.permExcused) {
+    return !hasSpecificEvent || ev === fmtKey;
+  }
+  if (hasSpecificEvent && ev === fmtKey) {
+    return true;
+  }
+  return false;
+}
+
 function onFormatChange(resetFields = true) {
   const formatEl = document.getElementById("proto-format");
   if (!formatEl) return;
@@ -1331,11 +1344,7 @@ function onFormatChange(resetFields = true) {
     currentAttendance = {};
     const unit = cfg.unit;
     (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
-      let initialStatus = "unexcused";
-      
-      if (m.permExcused && (!m.permExcusedEvent || m.permExcusedEvent === "all" || m.permExcusedEvent === fmtKey)) {
-        initialStatus = "excused";
-      }
+      let initialStatus = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
       currentAttendance[m.id] = { status: initialStatus, note: "" };
     });
   }
@@ -1369,7 +1378,7 @@ function renderAttendanceList() {
 
   relevantMembers.forEach(m => {
     if (!currentAttendance[m.id]) {
-      let defStatus = (m.permExcused && (!m.permExcusedEvent || m.permExcusedEvent === "all" || m.permExcusedEvent === fmtKey)) ? "excused" : "unexcused";
+      let defStatus = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
       currentAttendance[m.id] = { status: defStatus, note: "" };
     }
     const state = currentAttendance[m.id];
@@ -2752,6 +2761,17 @@ async function updateMember(id, field, value) {
   const m = (appData.members || []).find(x => x.id === id);
   if (m) {
     m[field] = value;
+    const editProtoId = document.getElementById("edit-protocol-id");
+    const formatEl = document.getElementById("proto-format");
+    if ((field === "permExcused" || field === "permExcusedEvent") && (!editProtoId || !editProtoId.value) && formatEl) {
+      const fmtKey = formatEl.value;
+      const newDefault = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
+      if (!currentAttendance[m.id]) {
+        currentAttendance[m.id] = { status: newDefault, note: "" };
+      } else {
+        currentAttendance[m.id].status = newDefault;
+      }
+    }
     renderAttendanceList();
     renderTkList();
     renderTkStats();
