@@ -830,7 +830,7 @@ let currentAttendance = {};
 let currentTkInputs = {};
 let isFirstLoad = true;
 
-// Sortierzustände für Tabellen (Standardwert für Mitglied ist jetzt null / Standard-Reihenfolge)
+// Sortierzustände für Tabellen
 let statsSortCol = null;
 let statsSortAsc = true;
 let tkStatsSortCol = null;
@@ -1555,7 +1555,8 @@ function sortTkStatsTable(col) {
     tkStatsSortAsc = !tkStatsSortAsc;
   } else {
     tkStatsSortCol = col;
-    tkStatsSortAsc = (col === 'name' || col === 'unit');
+    // Wenn auf "name" geklickt wird, standardmäßig aufsteigend (Reihenfolge der Mitgliederliste)
+    tkStatsSortAsc = true;
   }
   renderTkStats();
 }
@@ -1593,6 +1594,7 @@ function renderTkStats() {
 
   const memberStats = [];
 
+  // Ausgangsreihenfolge folgt exakt der Mitgliederliste (appData.members)
   (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, totalTK = 0;
 
@@ -1646,14 +1648,14 @@ function renderTkStats() {
     memberStats.push({ member: m, pres, totalTK, tkPerEventNum, tkPerEvent: tkPerEventNum.toFixed(2) });
   });
 
-  // Sortierung: Wenn keine Spalte gewählt ist, gilt exakt die Reihenfolge der Mitgliederliste
   if (tkStatsSortCol !== null) {
     memberStats.sort((a, b) => {
       let valA, valB;
       if (tkStatsSortCol === 'name') {
-        valA = a.member.napoName || "";
-        valB = b.member.napoName || "";
-        return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        // Wenn nach Name/Mitglied sortiert wird, nach Index in der Mitgliederliste sortieren!
+        const indexA = appData.members.findIndex(x => x.id === a.member.id);
+        const indexB = appData.members.findIndex(x => x.id === b.member.id);
+        return tkStatsSortAsc ? (indexA - indexB) : (indexB - indexA);
       } else if (tkStatsSortCol === 'unit') {
         valA = "Nr59";
         valB = "Nr59";
@@ -2048,7 +2050,7 @@ function sortStatsTable(col) {
     statsSortAsc = !statsSortAsc;
   } else {
     statsSortCol = col;
-    statsSortAsc = (col === 'name' || col === 'unit');
+    statsSortAsc = true;
   }
   renderStats();
 }
@@ -2081,7 +2083,6 @@ function renderStats() {
 
   const memberStats = [];
 
-  // Ausgangsreihenfolge entspricht exakt der Mitgliederliste (appData.members)
   (appData.members || []).filter(m => m.active && (m.inNapo || m.inBre)).forEach(m => {
     let total = 0, pres = 0, exc = 0, unexc = 0;
 
@@ -2160,14 +2161,14 @@ function renderStats() {
     memberStats.push({ member: m, nameLabel, unitBadges, total, pres, exc, unexc, rateNum });
   });
 
-  // Nur wenn eine Spalte explizit angeklickt wurde sortieren, sonst Reihenfolge beibehalten
   if (statsSortCol !== null) {
     memberStats.sort((a, b) => {
       let valA, valB;
       if (statsSortCol === 'name') {
-        valA = a.nameLabel;
-        valB = b.nameLabel;
-        return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+        // Sortierung nach Index in der Mitgliederliste statt alphabetisch
+        const indexA = appData.members.findIndex(x => x.id === a.member.id);
+        const indexB = appData.members.findIndex(x => x.id === b.member.id);
+        return statsSortAsc ? (indexA - indexB) : (indexB - indexA);
       } else if (statsSortCol === 'unit') {
         valA = (a.member.inNapo ? "Nr59" : "") + (a.member.inBre ? "Eichenwacht" : "");
         valB = (b.member.inNapo ? "Nr59" : "") + (b.member.inBre ? "Eichenwacht" : "");
