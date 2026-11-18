@@ -240,7 +240,9 @@
   /* Tabellen */
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
-  th { color: var(--text-muted); font-weight: 600; background: rgba(0,0,0,0.2); }
+  th { color: var(--text-muted); font-weight: 600; background: rgba(0,0,0,0.2); user-select: none; }
+  th.sortable { cursor: pointer; transition: color 0.15s; }
+  th.sortable:hover { color: #fff; background: rgba(255,255,255,0.05); }
   tr:hover td { background: var(--surface-hover); }
 
   /* Badges */
@@ -500,11 +502,11 @@
           <table>
             <thead>
               <tr>
-                <th>Mitglied</th>
-                <th>Einheit</th>
-                <th style="color:var(--danger);">Teamkills</th>
-                <th>Anwesend</th>
-                <th style="color:var(--danger);">TK / Event</th>
+                <th class="sortable" onclick="sortTkStatsTable('name')">Mitglied <span id="sort-ind-tk-name"></span></th>
+                <th class="sortable" onclick="sortTkStatsTable('unit')">Einheit <span id="sort-ind-tk-unit"></span></th>
+                <th class="sortable" style="color:var(--danger);" onclick="sortTkStatsTable('tk')">Teamkills <span id="sort-ind-tk-tk">▼</span></th>
+                <th class="sortable" onclick="sortTkStatsTable('pres')">Anwesend <span id="sort-ind-tk-pres"></span></th>
+                <th class="sortable" style="color:var(--danger);" onclick="sortTkStatsTable('ratio')">TK / Event <span id="sort-ind-tk-ratio"></span></th>
               </tr>
             </thead>
             <tbody id="tk-stats-body"></tbody>
@@ -564,47 +566,51 @@
       <table>
         <thead>
           <tr>
-            <th>Mitglied (Nr59)</th>
-            <th>Einheit</th>
-            <th>Erfasste Events</th>
-            <th style="color:var(--success);">Anwesend</th>
-            <th style="color:var(--warning);">Abgemeldet</th>
-            <th style="color:var(--danger);">Unentschuldigt</th>
-            <th>Anwesenheitsquote</th>
+            <th class="sortable" onclick="sortStatsTable('name')">Mitglied (Nr59) <span id="sort-ind-stats-name"></span></th>
+            <th class="sortable" onclick="sortStatsTable('unit')">Einheit <span id="sort-ind-stats-unit"></span></th>
+            <th class="sortable" onclick="sortStatsTable('total')">Erfasste Events <span id="sort-ind-stats-total"></span></th>
+            <th class="sortable" style="color:var(--success);" onclick="sortStatsTable('pres')">Anwesend <span id="sort-ind-stats-pres"></span></th>
+            <th class="sortable" style="color:var(--warning);" onclick="sortStatsTable('exc')">Abgemeldet <span id="sort-ind-stats-exc"></span></th>
+            <th class="sortable" style="color:var(--danger);" onclick="sortStatsTable('unexc')">Unentschuldigt <span id="sort-ind-stats-unexc"></span></th>
+            <th class="sortable" onclick="sortStatsTable('rate')">Anwesenheitsquote <span id="sort-ind-stats-rate">▼</span></th>
           </tr>
         </thead>
         <tbody id="stats-table-body"></tbody>
       </table>
     </div>
 
-    <!-- Manuelle Jahres-Gesamtaktivität -->
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
-        <div>
-          <h2 style="border:none; margin:0; padding:0;">Manuelle Jahres-Gesamtaktivität nachtragen</h2>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:0.25rem;">
-            Hier kannst du für ein Jahr zusätzliche Anwesenheiten, Abmeldungen oder Fehltage pro Mitglied eintragen (wird auf die obige Tabelle addiert).
+    <!-- Manuelle Jahres-Gesamtaktivität (Standardmäßig eingeklappt) -->
+    <details class="card" style="background: rgba(28, 31, 36, 0.7);">
+      <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
+        <span>📁 Manuelle Jahres-Gesamtaktivität nachtragen (Einklappbar)</span>
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
+      </summary>
+      
+      <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">
+            Hier kannst du für ein Jahr zusätzliche Anwesenheiten, Abmeldungen oder Fehltage pro Mitglied eintragen (wird auf die obige Statistik addiert).
           </p>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <label style="margin:0;">Jahr:</label>
+            <input type="number" id="manual-att-year" min="2020" max="2099" value="2026" onchange="renderManualAttendanceList()" style="width:95px; padding:0.35rem 0.5rem;">
+            <button class="btn btn-success btn-sm" onclick="saveManualAttendance()">☁️ Jahresaktivität speichern</button>
+          </div>
         </div>
-        <div style="display:flex; gap:0.5rem; align-items:center;">
-          <label style="margin:0;">Jahr:</label>
-          <input type="number" id="manual-att-year" min="2020" max="2099" value="2026" onchange="renderManualAttendanceList()" style="width:95px; padding:0.35rem 0.5rem;">
-          <button class="btn btn-success btn-sm" onclick="saveManualAttendance()">☁️ Jahresaktivität speichern</button>
-        </div>
-      </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Mitglied (Nr59)</th>
-            <th style="color:var(--success); width: 150px;">Anwesenheiten</th>
-            <th style="color:var(--warning); width: 150px;">Abgemeldet</th>
-            <th style="color:var(--danger); width: 150px;">Unentschuldigt</th>
-          </tr>
-        </thead>
-        <tbody id="manual-att-body"></tbody>
-      </table>
-    </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Mitglied (Nr59)</th>
+              <th style="color:var(--success); width: 150px;">Anwesenheiten</th>
+              <th style="color:var(--warning); width: 150px;">Abgemeldet</th>
+              <th style="color:var(--danger); width: 150px;">Unentschuldigt</th>
+            </tr>
+          </thead>
+          <tbody id="manual-att-body"></tbody>
+        </table>
+      </div>
+    </details>
   </div>
 
   <!-- TAB 5: MITGLIEDERLISTE -->
@@ -747,7 +753,7 @@
     <div class="card">
       <h2>Datensicherung & Export</h2>
       <p style="color:var(--text-muted); margin-bottom:1rem;">
-        Da die Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
+        Da the Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
       </p>
       <div style="display:flex; gap:1rem; flex-wrap:wrap;">
         <button class="btn" onclick="exportBackup()">⬇️ Backup herunterladen (.json)</button>
@@ -808,6 +814,12 @@ let appData = { members: [], protocols: [], teamkillLogs: [], templates: {}, man
 let currentAttendance = {};
 let currentTkInputs = {};
 let isFirstLoad = true;
+
+// Sortierzustände für Tabellen
+let statsSortCol = "rate";
+let statsSortAsc = false;
+let tkStatsSortCol = "tk";
+let tkStatsSortAsc = false;
 
 function getTemplates() {
   if (appData.templates && Object.keys(appData.templates).length > 0) {
@@ -1524,12 +1536,35 @@ function renderTkRecords() {
   }
 }
 
+function sortTkStatsTable(col) {
+  if (tkStatsSortCol === col) {
+    tkStatsSortAsc = !tkStatsSortAsc;
+  } else {
+    tkStatsSortCol = col;
+    // Standard: Bei TKs und Ratio absteigend, bei Namen aufsteigend
+    tkStatsSortAsc = (col === 'name' || col === 'unit');
+  }
+  renderTkStats();
+}
+
 function renderTkStats() {
   const tkStatsFilterEl = document.getElementById("tk-stats-filter");
   const tkStatsYearFilterEl = document.getElementById("tk-stats-year-filter");
   const tbody = document.getElementById("tk-stats-body");
   if (!tbody) return;
   tbody.innerHTML = "";
+
+  // Sortierindikatoren aktualisieren
+  ['name', 'unit', 'tk', 'pres', 'ratio'].forEach(c => {
+    const ind = document.getElementById(`sort-ind-tk-${c}`);
+    if (ind) {
+      if (tkStatsSortCol === c) {
+        ind.textContent = tkStatsSortAsc ? "▲" : "▼";
+      } else {
+        ind.textContent = "";
+      }
+    }
+  });
 
   const filter = tkStatsFilterEl ? tkStatsFilterEl.value : "all";
   const yearFilter = tkStatsYearFilterEl ? tkStatsYearFilterEl.value : "all";
@@ -1559,7 +1594,6 @@ function renderTkStats() {
       }
     });
 
-    // Manuelle Jahres-Anwesenheiten einbeziehen, falls "all" als Event-Filter gewählt ist
     if (filter === "all" && appData.manualAttendance) {
       if (yearFilter === "all") {
         Object.values(appData.manualAttendance).forEach(yearData => {
@@ -1583,11 +1617,33 @@ function renderTkStats() {
 
     if (total === 0 && totalTK === 0) return;
 
-    const tkPerEvent = pres > 0 ? (totalTK / pres).toFixed(2) : (total > 0 ? (totalTK / total).toFixed(2) : "0.00");
-    memberStats.push({ member: m, pres, totalTK, tkPerEvent });
+    const tkPerEventNum = pres > 0 ? (totalTK / pres) : (total > 0 ? (totalTK / total) : 0);
+    memberStats.push({ member: m, pres, totalTK, tkPerEventNum, tkPerEvent: tkPerEventNum.toFixed(2) });
   });
 
-  memberStats.sort((a, b) => b.totalTK - a.totalTK);
+  // Sortierung anwenden
+  memberStats.sort((a, b) => {
+    let valA, valB;
+    if (tkStatsSortCol === 'name') {
+      valA = a.member.napoName || "";
+      valB = b.member.napoName || "";
+      return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (tkStatsSortCol === 'unit') {
+      valA = "Nr59";
+      valB = "Nr59";
+      return tkStatsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (tkStatsSortCol === 'tk') {
+      valA = a.totalTK;
+      valB = b.totalTK;
+    } else if (tkStatsSortCol === 'pres') {
+      valA = a.pres;
+      valB = b.pres;
+    } else if (tkStatsSortCol === 'ratio') {
+      valA = a.tkPerEventNum;
+      valB = b.tkPerEventNum;
+    }
+    return tkStatsSortAsc ? (valA - valB) : (valB - valA);
+  });
 
   memberStats.forEach(item => {
     const m = item.member;
@@ -1932,12 +1988,35 @@ function matchesStatsFilters(item, filter, yearFilter) {
   return matchesEvent && matchesYear;
 }
 
+function sortStatsTable(col) {
+  if (statsSortCol === col) {
+    statsSortAsc = !statsSortAsc;
+  } else {
+    statsSortCol = col;
+    // Standard: Rate und Zahlen absteigend, Namen/Einheit aufsteigend
+    statsSortAsc = (col === 'name' || col === 'unit');
+  }
+  renderStats();
+}
+
 function renderStats() {
   const statsFilterEl = document.getElementById("stats-filter");
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const tbody = document.getElementById("stats-table-body");
   if (!tbody) return;
   tbody.innerHTML = "";
+
+  // Sortierindikatoren aktualisieren
+  ['name', 'unit', 'total', 'pres', 'exc', 'unexc', 'rate'].forEach(c => {
+    const ind = document.getElementById(`sort-ind-stats-${c}`);
+    if (ind) {
+      if (statsSortCol === c) {
+        ind.textContent = statsSortAsc ? "▲" : "▼";
+      } else {
+        ind.textContent = "";
+      }
+    }
+  });
 
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
@@ -1948,6 +2027,8 @@ function renderStats() {
     if (!cfg || cfg.unit !== "napo") return false;
     return matchesStatsFilters(p, filter, yearFilter);
   });
+
+  const memberStats = [];
 
   (appData.members || []).filter(m => m.active && m.inNapo).forEach(m => {
     let total = 0, pres = 0, exc = 0, unexc = 0;
@@ -1962,7 +2043,6 @@ function renderStats() {
       }
     });
 
-    // Manuelle Jahres-Gesamtaktivität addieren, wenn kein einzelnes Event-Format gefiltert wird
     if (filter === "all" && appData.manualAttendance) {
       if (yearFilter === "all") {
         Object.values(appData.manualAttendance).forEach(yearData => {
@@ -1990,24 +2070,60 @@ function renderStats() {
 
     if (total === 0) return;
     
-    const rate = total > 0 ? Math.round((pres / total) * 100) : 0;
+    const rateNum = total > 0 ? Math.round((pres / total) * 100) : 0;
+    memberStats.push({ member: m, total, pres, exc, unexc, rateNum });
+  });
+
+  // Sortierung anwenden
+  memberStats.sort((a, b) => {
+    let valA, valB;
+    if (statsSortCol === 'name') {
+      valA = a.member.napoName || "";
+      valB = b.member.napoName || "";
+      return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (statsSortCol === 'unit') {
+      valA = "Nr59";
+      valB = "Nr59";
+      return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+    } else if (statsSortCol === 'total') {
+      valA = a.total;
+      valB = b.total;
+    } else if (statsSortCol === 'pres') {
+      valA = a.pres;
+      valB = b.pres;
+    } else if (statsSortCol === 'exc') {
+      valA = a.exc;
+      valB = b.exc;
+    } else if (statsSortCol === 'unexc') {
+      valA = a.unexc;
+      valB = b.unexc;
+    } else if (statsSortCol === 'rate') {
+      valA = a.rateNum;
+      valB = b.rateNum;
+    }
+    return statsSortAsc ? (valA - valB) : (valB - valA);
+  });
+
+  memberStats.forEach(item => {
+    const m = item.member;
     const nameLabel = m.napoName || "";
     const unitBadges = `<span class="badge badge-napo">Nr59</span>`;
+    const rate = item.rateNum;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${nameLabel}</strong></td>
       <td>${unitBadges}</td>
-      <td>${total}</td>
-      <td style="color:var(--success); font-weight:700;">${pres}</td>
-      <td style="color:var(--warning);">${exc}</td>
-      <td style="color:var(--danger);">${unexc}</td>
+      <td>${item.total}</td>
+      <td style="color:var(--success); font-weight:700;">${item.pres}</td>
+      <td style="color:var(--warning);">${item.exc}</td>
+      <td style="color:var(--danger);">${item.unexc}</td>
       <td>
         <div style="display:flex; align-items:center; gap:0.5rem;">
           <div style="flex:1; background:var(--bg); height:8px; border-radius:4px; overflow:hidden; max-width:100px;">
             <div style="width:${rate}%; background:${rate >= 70 ? 'var(--success)' : rate >= 40 ? 'var(--warning)' : 'var(--danger)'}; height:100%;"></div>
           </div>
-          <span>${total > 0 ? rate + '%' : '-'}</span>
+          <span>${item.total > 0 ? rate + '%' : '-'}</span>
         </div>
       </td>
     `;
@@ -2036,7 +2152,6 @@ function renderStatsChart() {
   const tpls = getTemplates();
   const eventsByKey = {};
 
-  // 1. Alle passenden Protokolle sammeln
   (appData.protocols || []).forEach(p => {
     const cfg = tpls[p.format];
     if (!cfg || cfg.unit !== "napo") return;
@@ -2055,7 +2170,6 @@ function renderStatsChart() {
     }
   });
 
-  // 2. Alle passenden Teamkill-Logs sammeln (auch wenn kein Protokoll für diesen Tag existiert!)
   (appData.teamkillLogs || []).forEach(t => {
     const cfg = tpls[t.format];
     if (!cfg || cfg.unit !== "napo") return;
@@ -2072,7 +2186,6 @@ function renderStatsChart() {
     eventsByKey[key].tk += sumTK;
   });
 
-  // Chronologisch sortieren
   const dataPoints = Object.values(eventsByKey)
     .sort((a, b) => a.date.localeCompare(b.date) || a.format.localeCompare(b.format))
     .map(item => ({
@@ -2210,7 +2323,6 @@ async function saveManualAttendance() {
     appData.manualAttendance[year][mId][field] = val;
   });
 
-  // Leere Einträge bereinigen, damit kein unnötiger Datenmüll entsteht
   for (const [mId, counts] of Object.entries(appData.manualAttendance[year])) {
     if (counts.present === 0 && counts.excused === 0 && counts.unexcused === 0) {
       delete appData.manualAttendance[year][mId];
