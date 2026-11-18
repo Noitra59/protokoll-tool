@@ -972,6 +972,15 @@ async function loadFromCloud(manual = false) {
       if (!appData.templates || Object.keys(appData.templates).length === 0) {
         appData.templates = { ...DEFAULT_TEMPLATES };
       }
+      const localEvMap = getLocalExcusedEventsMap();
+      (appData.members || []).forEach(m => {
+        m.permExcused = normalizeBool(m.permExcused);
+        if ((!m.permExcusedEvent || m.permExcusedEvent === "") && localEvMap[m.id]) {
+          m.permExcusedEvent = localEvMap[m.id];
+        } else if (m.permExcusedEvent && m.permExcusedEvent !== "all") {
+          saveLocalExcusedEvent(m.id, m.permExcusedEvent);
+        }
+      });
       setSyncStatus("ok", "☁️ Google Sheets verbunden");
       if (manual) showToast("Daten erfolgreich aktualisiert!");
     }
@@ -995,7 +1004,12 @@ async function loadFromCloud(manual = false) {
   updateTkStatsFilterDropdown();
   updateStatsYearDropdown();
   updateHistoryBadge();
-  renderAttendanceList();
+  const editProtoIdOnLoad = document.getElementById("edit-protocol-id");
+  if (!editProtoIdOnLoad || !editProtoIdOnLoad.value) {
+    onFormatChange(true);
+  } else {
+    renderAttendanceList();
+  }
   renderTkList();
   renderTkHistory();
   renderTkStats();
@@ -1287,14 +1301,53 @@ function resetTkEditorMode() {
   showToast("Zu neuer Teamkill-Erfassung gewechselt.");
 }
 
+function getLocalExcusedEventsMap() {
+  try {
+    return JSON.parse(localStorage.getItem("kk_member_excused_events") || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveLocalExcusedEvent(memberId, eventKey) {
+  const map = getLocalExcusedEventsMap();
+  if (!eventKey || eventKey === "all") {
+    delete map[memberId];
+  } else {
+    map[memberId] = eventKey;
+  }
+  localStorage.setItem("kk_member_excused_events", JSON.stringify(map));
+}
+
+function normalizeBool(val) {
+  if (typeof val === "boolean") return val;
+  if (typeof val === "string") return val.trim().toLowerCase() === "true";
+  return Boolean(val);
+}
+
 function isMemberDefaultExcused(member, fmtKey) {
   if (!member) return false;
-  const ev = member.permExcusedEvent;
-  const hasSpecificEvent = ev && ev !== "all";
-  if (member.permExcused) {
-    return !hasSpecificEvent || ev === fmtKey;
+  const isPerm = normalizeBool(member.permExcused);
+  const rawEv = (member.permExcusedEvent || "").toString().trim();
+  const hasSpecificEvent = rawEv !== "" && rawEv.toLowerCase() !== "all";
+
+  let matchesCurrentEvent = false;
+  if (hasSpecificEvent && fmtKey) {
+    if (rawEv === fmtKey || rawEv.toLowerCase() === fmtKey.toLowerCase()) {
+      matchesCurrentEvent = true;
+    } else {
+      const tpls = getTemplates();
+      const cfg = tpls[fmtKey];
+      if (cfg && cfg.name && cfg.name.trim().toLowerCase() === rawEv.toLowerCase()) {
+        matchesCurrentEvent = true;
+      }
+    }
   }
-  if (hasSpecificEvent && ev === fmtKey) {
+
+  if (isPerm) {
+    return !hasSpecificEvent || matchesCurrentEvent;
+  }
+  if (hasSpecificEvent && matchesCurrentEvent) {
     return true;
   }
   return false;
@@ -2660,9 +2713,10 @@ function renderMembers() {
   const tpls = getTemplates();
 
   (appData.members || []).forEach((m, index) => {
-    let eventOptions = `<option value="all">Alle Events</option>`;
+    const curEv = (m.permExcusedEvent || "all").toString().trim();
+    let eventOptions = `<option value="all" ${curEv.toLowerCase() === "all" ? "selected" : ""}>Alle Events</option>`;
     for (const [key, cfg] of Object.entries(tpls)) {
-      const selected = (m.permExcusedEvent === key) ? "selected" : "";
+      const selected = (curEv === key || curEv.toLowerCase() === key.toLowerCase() || (cfg.name && cfg.name.trim().toLowerCase() === curEv.toLowerCase())) ? "selected" : "";
       eventOptions += `<option value="${key}" ${selected}>${cfg.name}</option>`;
     }
 
@@ -2761,6 +2815,9 @@ async function updateMember(id, field, value) {
   const m = (appData.members || []).find(x => x.id === id);
   if (m) {
     m[field] = value;
+    if (field === "permExcusedEvent") {
+      saveLocalExcusedEvent(id, value);
+    }
     const editProtoId = document.getElementById("edit-protocol-id");
     const formatEl = document.getElementById("proto-format");
     if ((field === "permExcused" || field === "permExcusedEvent") && (!editProtoId || !editProtoId.value) && formatEl) {
