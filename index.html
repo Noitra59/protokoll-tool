@@ -525,7 +525,6 @@
       </div>
     </details>
 
-
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
         <h2 style="border:none; margin:0; padding:0;">Gespeicherte Protokolle</h2>
@@ -592,7 +591,7 @@
           <div id="tk-member-list"></div>
         </div>
 
-        <!-- MITGLIEDER-TEAMKILL-HISTORIE (UNTER TEAMKILLS ERFASSEN AUF DER LINKEN SEITE) -->
+        <!-- MITGLIEDER-TEAMKILL-HISTORIE -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
             <h2 style="border:none; margin:0; padding:0;">Mitglieder-Teamkill-Historie</h2>
@@ -867,7 +866,6 @@
     </div>
   </div>
 
-
   <!-- TAB 5: MITGLIEDERLISTE -->
   <div id="tab-members" class="tab-content">
     <div class="card">
@@ -1020,7 +1018,7 @@
     <div class="card">
       <h2>Datensicherung & Export</h2>
       <p style="color:var(--text-muted); margin-bottom:1rem;">
-        Da the Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
+        Da die Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
       </p>
       <div style="display:flex; gap:1rem; flex-wrap:wrap;">
         <button class="btn" onclick="exportBackup()">⬇️ Backup herunterladen (.json)</button>
@@ -1194,6 +1192,7 @@ async function loadFromCloud(manual = false) {
   updateStatsFilterDropdown();
   updateTkStatsFilterDropdown();
   updateStatsYearDropdown();
+  updateMemberEventHistoryDropdowns();
   updateHistoryBadge();
   const editProtoIdOnLoad = document.getElementById("edit-protocol-id");
   if (!editProtoIdOnLoad || !editProtoIdOnLoad.value) {
@@ -1208,6 +1207,7 @@ async function loadFromCloud(manual = false) {
   updateTkMemberHistoryDropdown();
   renderMemberTkHistory();
   renderStats();
+  renderMemberEventHistory();
   renderStatsChart();
   updateOutput();
   
@@ -1306,7 +1306,7 @@ function switchTab(tabId, btnElement) {
     updateHistoryEventDropdown();
     renderHistory();
   }
-    if (tabId === "stats") {
+  if (tabId === "stats") {
     updateStatsYearDropdown();
     updateMemberEventHistoryDropdowns();
     renderStats();
@@ -1458,7 +1458,6 @@ function updateStatsYearDropdown() {
     }
   });
 
-
   const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
 
   const selectors = [
@@ -1589,12 +1588,10 @@ function isMemberDefaultExcused(member, fmtKey) {
 
   const rawEv = (member.permExcusedEvent || "").toString().trim().toLowerCase();
   
-  // Wenn "all" gewählt ist oder kein spezifisches Event (oder "alle events"), gilt es für JEDES Event!
   if (rawEv === "" || rawEv === "all" || rawEv === "alle events") {
     return true;
   }
 
-  // Ansonsten prüfen, ob das gewählte spezifische Event mit dem aktuellen Event (fmtKey oder Event-Name) übereinstimmt
   if (fmtKey) {
     if (rawEv === fmtKey.toLowerCase()) {
       return true;
@@ -1649,7 +1646,6 @@ function onFormatChange(resetFields = true) {
     if (summaryEl) summaryEl.value = "";
   }
 
-  // Nur bei neuem Protokoll (resetFields === true) die Anwesenheit frisch initialisieren
   if (resetFields) {
     currentAttendance = {};
     const unit = cfg.unit;
@@ -2286,7 +2282,7 @@ function buildBBCodeFromData(dataObj) {
   bb += `${mercs}\n\n`;
 
   bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\n";
+  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\n`;
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
@@ -2724,8 +2720,6 @@ function renderStats() {
 
   const chartModeEl = document.getElementById("stats-chart-mode");
   const chartMode = chartModeEl ? chartModeEl.value : "activity";
-  const chartTypeEl = document.getElementById("stats-chart-type");
-  const chartType = chartTypeEl ? chartTypeEl.value : "bar";
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
@@ -3698,7 +3692,6 @@ function generateBriefingReport() {
   }
 }
 
-
 function updateTkMemberHistoryDropdown() {
   const select = document.getElementById("tk-member-history-select");
   if (!select) return;
@@ -3768,7 +3761,6 @@ function renderMemberTkHistory() {
   }
 }
 
-
 function onTkHistoryDetailsToggle(detailsEl) {
   const toggleText = document.getElementById("tk-history-summary-toggle-text");
   if (!toggleText) return;
@@ -3778,7 +3770,6 @@ function onTkHistoryDetailsToggle(detailsEl) {
     toggleText.textContent = "Klicken zum Aufklappen";
   }
 }
-
 
 let parsedImportRaw = null;
 let parsedImportReady = null;
@@ -3822,7 +3813,6 @@ function parseBBCodeProtocolText(rawBB) {
   const lines = (rawBB || "").split(/\r?\n/);
   const cleanLines = lines.map(l => stripBBCodeTags(l));
 
-  // 1. Datum aus erster nicht-leerer Zeile oder Titel suchen (TT.MM.JJJJ)
   let isoDate = "";
   for (let i = 0; i < Math.min(cleanLines.length, 6); i++) {
     const m = cleanLines[i].match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
@@ -3835,7 +3825,6 @@ function parseBBCodeProtocolText(rawBB) {
     }
   }
 
-  // 2. Template / Event-Format erkennen
   const tpls = getTemplates();
   let detectedFormat = Object.keys(tpls)[0] || "tue_hli";
   const headerText = cleanLines.slice(0, 5).join(" ").toLowerCase();
@@ -3857,7 +3846,6 @@ function parseBBCodeProtocolText(rawBB) {
     }
   }
 
-  // 3. Abschnitte auslesen
   let section = null;
   const rawEntries = {
     present: [],
@@ -3885,7 +3873,7 @@ function parseBBCodeProtocolText(rawBB) {
       section = "unexcused";
       continue;
     }
-    if (/^(kurzzusammenfassung|übungen und trainingseinheiten|positiv hervorzuheben|negativ hervorzuheben|anmerkungen)\s*:?/i.test(cl)) {
+    if (/^(kurzzusammenfassung|trainingseinheiten|übungen und trainingseinheiten|positiv hervorzuheben|negativ hervorzuheben|anmerkungen)\s*:?/i.test(cl)) {
       section = null;
       continue;
     }
@@ -3915,20 +3903,17 @@ function findMatchingMember(rawName, unit) {
 
   const members = appData.members || [];
 
-  // 1. Exakter Treffer in der bevorzugten Einheit
   let match = members.find(m => {
     const primary = unit === "bre" ? m.breName : m.napoName;
     return normalizeMemberMatchName(primary) === target;
   });
   if (match) return match;
 
-  // 2. Exakter Treffer in der anderen Einheit (falls Rang/Name dort steht)
   match = members.find(m => {
     return normalizeMemberMatchName(m.napoName) === target || normalizeMemberMatchName(m.breName) === target;
   });
   if (match) return match;
 
-  // 3. Treffer ohne Rang (letztes Wort / Namensbestandteil nach Leerzeichen)
   const targetParts = target.split(" ");
   const targetShort = targetParts.length > 1 ? targetParts.slice(1).join(" ") : target;
   if (targetShort.length >= 3) {
@@ -4098,11 +4083,6 @@ function clearBBCodeImport() {
   if (box) box.style.display = "none";
 }
 
-updateMemberEventHistoryDropdowns();
-renderMemberEventHistory();
-initEditor();
-loadFromCloud();
-
 function updateMemberEventHistoryDropdowns() {
   const memberSelect = document.getElementById("stats-member-events-select");
   const eventSelect = document.getElementById("stats-member-events-filter");
@@ -4248,7 +4228,6 @@ function renderMemberEventHistory() {
   });
 }
 
-
 if (typeof ResizeObserver !== "undefined") {
   const statsRo = new ResizeObserver(() => {
     const statsTab = document.getElementById("tab-stats");
@@ -4267,6 +4246,8 @@ window.addEventListener("resize", () => {
   }
 });
 
+initEditor();
+loadFromCloud();
 </script>
 </body>
 </html>
