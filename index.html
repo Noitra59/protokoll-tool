@@ -1682,7 +1682,8 @@ function renderAttendanceList() {
       currentAttendance[m.id] = { status: defStatus, note: "" };
     }
     const state = currentAttendance[m.id];
-    const displayName = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+    const candidates = getAllMemberNameCandidates(m, unit);
+        const displayName = (unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName)) || candidates[0] || entry.name;
 
     const row = document.createElement("div");
     row.className = "attendance-row";
@@ -3783,7 +3784,7 @@ function stripBBCodeTags(str) {
 function normalizeMemberMatchName(str) {
   return (str || "")
     .toString()
-    .replace(/[​-‍﻿]/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
     .replace(/[“”„‟«»]/g, '"')
     .replace(/[‘’‚‛]/g, "'")
     .replace(/[–—−‐‑]/g, "-")
@@ -3795,7 +3796,7 @@ function normalizeMemberMatchName(str) {
 function stripLeadingRankPrefix(str) {
   const norm = normalizeMemberMatchName(str);
   if (!norm) return "";
-  const rankPattern = /^(?:(?:k\.?\s*k\.?|k\.u\.k\.?|feldmarschall(?:leutnant)?|general(?:major|leutnant|oberst)?|oberst(?:leutnant)?|major|hauptmann|rittmeister|oberleutnant|leutnant|fähnrich|faehnrich|kadett|offizier|feldwebel|wachtmeister|zugführer|zugfuehrer|korporal|gefreiter|soldat|schütze|schuetze|kanonier|dragoner|husar|ulan|jäger|jaeger|druide|banneret|herr|meister|bruder|dr\.?|prof\.?)\s+)+/i;
+  const rankPattern = /^(?:(?:k\.?\s*k\.?|k\.u\.k\.?|feldmarschall(?:leutnant)?|general(?:major|leutnant|oberst)?|oberst(?:leutnant)?|major|hauptmann|rittmeister|oberleutnant|leutnant|fähnrich|faehnrich|kadett|offizier|feldwebel|wachtmeister|zugführer|zugfuehrer|korporal|gefreiter|soldat|schütze|schuetze|kanonier|dragoner|husar|ulan|jäger|jaeger|druide|banneret|freiherr|baron|eichgeschworener|kronengarde|knecht|herr|meister|bruder|dr\.?|prof\.?)\s+)+/i;
   const stripped = norm.replace(rankPattern, "").trim();
   return stripped || norm;
 }
@@ -3904,34 +3905,52 @@ function parseBBCodeProtocolText(rawBB) {
   };
 }
 
+function getAllMemberNameCandidates(m, unit) {
+  if (!m || typeof m !== "object") return [];
+  const candidates = [];
+  const pushVal = (v) => {
+    if (typeof v === "string" && v.trim()) candidates.push(v.trim());
+  };
+
+  if (unit === "bre") {
+    pushVal(m.breName);
+    pushVal(m.napoName);
+  } else {
+    pushVal(m.napoName);
+    pushVal(m.breName);
+  }
+
+  for (const [k, v] of Object.entries(m)) {
+    if (["id", "active", "inNapo", "inBre", "permExcused", "permExcusedEvent", "permExcusedUntil", "napoName", "breName"].includes(k)) continue;
+    if (typeof v === "string" && v.trim() && !/^(true|false|ja|nein|aktiv|archiviert|\d{4}-\d{2}-\d{2})$/i.test(v.trim())) {
+      pushVal(v);
+    }
+  }
+  return Array.from(new Set(candidates));
+}
+
 function findMatchingMember(rawName, unit) {
   const target = normalizeMemberMatchName(rawName);
   if (!target) return null;
 
-  const members = appData.members || [];
-  const getCandidates = (m) => {
-    if (!m) return [];
-    const primary = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
-    const secondary = unit === "bre" ? m.napoName : m.breName;
-    return [primary, secondary, m.name, m.SpielerName, m.Name].filter(Boolean);
-  };
+  const members = Array.isArray(appData.members) ? appData.members : [];
+  const targetNoRank = stripLeadingRankPrefix(target);
 
-  // 1. Exakter Treffer (bevorzugt aktive Mitglieder, falls doppelt)
+  // 1. Exakter Treffer auf vollständigen Namen (bevorzugt aktive Mitglieder)
   for (const activeOnly of [true, false]) {
     const match = members.find(m => {
       if (activeOnly && m.active === false) return false;
-      return getCandidates(m).some(c => normalizeMemberMatchName(c) === target);
+      return getAllMemberNameCandidates(m, unit).some(c => normalizeMemberMatchName(c) === target);
     });
     if (match) return match;
   }
 
-  // 2. Treffer nach Entfernen von Rang-/Titel-Präfixen (z. B. "Fähnrich Lorenz" <-> "Lorenz" oder "Gefr. Max" <-> "Soldat Max")
-  const targetNoRank = stripLeadingRankPrefix(target);
+  // 2. Exakter Treffer nach Entfernen von Rang-/Titel-Präfixen (z. B. "Knecht Kasper" <-> "Kasper" oder "Banneret Lorenz" <-> "Fähnrich Lorenz")
   if (targetNoRank && targetNoRank.length >= 2) {
     for (const activeOnly of [true, false]) {
       const noRankMatches = members.filter(m => {
         if (activeOnly && m.active === false) return false;
-        return getCandidates(m).some(c => {
+        return getAllMemberNameCandidates(m, unit).some(c => {
           const cNorm = normalizeMemberMatchName(c);
           const cNoRank = stripLeadingRankPrefix(c);
           return cNoRank === targetNoRank || cNorm === targetNoRank || cNoRank === target;
@@ -3941,25 +3960,20 @@ function findMatchingMember(rawName, unit) {
     }
   }
 
-  // 3. Eindeutiger Teil-/Wort-Treffer (z. B. Nachname / Spitzname)
-  const targetParts = targetNoRank.split(" ").filter(Boolean);
-  const targetShort = targetParts.length > 0 ? targetParts[targetParts.length - 1] : targetNoRank;
-  if (targetShort && targetShort.length >= 3) {
+  // 3. Eindeutiger Wort-/Namensbestandteil-Treffer (z. B. Nachname / Spitzname)
+  const targetTokens = targetNoRank.split(" ").filter(t => t.length >= 3);
+  for (const token of [...targetTokens].reverse()) {
     for (const activeOnly of [true, false]) {
-      const partialMatches = members.filter(m => {
+      const tokenMatches = members.filter(m => {
         if (activeOnly && m.active === false) return false;
-        return getCandidates(m).some(c => {
+        return getAllMemberNameCandidates(m, unit).some(c => {
           const cNorm = normalizeMemberMatchName(c);
           const cNoRank = stripLeadingRankPrefix(c);
-          return (
-            cNorm.endsWith(" " + targetShort) ||
-            cNoRank.endsWith(" " + targetShort) ||
-            cNorm === targetShort ||
-            cNoRank === targetShort
-          );
+          const cWords = new Set([...cNorm.split(" "), ...cNoRank.split(" ")]);
+          return cWords.has(token) || cNorm.endsWith(" " + token) || cNoRank.endsWith(" " + token);
         });
       });
-      if (partialMatches.length === 1) return partialMatches[0];
+      if (tokenMatches.length === 1) return tokenMatches[0];
     }
   }
 
