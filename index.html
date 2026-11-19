@@ -815,7 +815,7 @@
         <div>
           <h2 style="margin:0;">📋 Event-Teilnahmen nach Mitglied</h2>
           <p style="font-size:0.85rem; color:var(--text-muted); margin:0.25rem 0 0 0;">
-            Zeigt die teilgenommenen Events des ausgewählten Mitglieds – optional gefiltert nach Event.
+            Zeigt die Events und den Anwesenheitsstatus des ausgewählten Mitglieds – optional gefiltert nach Event.
           </p>
         </div>
         <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
@@ -840,7 +840,7 @@
             <tr>
               <th>Datum</th>
               <th>Event</th>
-              <th>Notiz</th>
+              <th>Anwesenheitsstatus</th>
             </tr>
           </thead>
           <tbody id="stats-member-events-body">
@@ -3966,12 +3966,12 @@ function renderMemberEventHistory() {
   const rows = (appData.protocols || [])
     .filter(p => {
       if (eventFilter !== "all" && p.format !== eventFilter) return false;
-      return Boolean(p.attendance && p.attendance[memberId] && p.attendance[memberId].status === "present");
+      return Boolean(p.attendance && p.attendance[memberId]);
     })
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Keine teilgenommenen Events für diese Auswahl gefunden.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
     return;
   }
 
@@ -3980,13 +3980,22 @@ function renderMemberEventHistory() {
     const entry = p.attendance[memberId] || {};
     const cfg = tpls[p.format];
     const eventName = cfg ? cfg.name : p.format;
-    const note = (entry.note || "").trim();
+    const status = entry.status || "unexcused";
+
+    let statusHtml = "";
+    if (status === "present") {
+      statusHtml = `<span style="color:var(--success); font-weight:600;">Anwesend</span>`;
+    } else if (status === "excused") {
+      statusHtml = `<span style="color:var(--warning); font-weight:600;">Abgemeldet</span>`;
+    } else {
+      statusHtml = `<span style="color:var(--danger); font-weight:600;">Unentschuldigt</span>`;
+    }
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${formatGermanDate(p.date)}</strong></td>
       <td>${eventName}</td>
-      <td style="color:var(--text-muted);">${note || "-"}</td>
+      <td>${statusHtml}</td>
     `;
     tbody.appendChild(tr);
   });
