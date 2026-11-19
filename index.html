@@ -1079,12 +1079,13 @@ function setSyncStatus(state, text) {
   }
 }
 
-function mergeProtocolsSafe(cloudProtocols, localProtocols) {
+function mergeProtocolsSafe(cloudProtocols, localProtocols, deletedIds = []) {
   const cList = Array.isArray(cloudProtocols) ? cloudProtocols : [];
   const lList = Array.isArray(localProtocols) ? localProtocols : [];
+  const deletedSet = new Set(Array.isArray(deletedIds) ? deletedIds : []);
   const byId = new Map();
-  cList.forEach(p => { if (p && p.id) byId.set(p.id, p); });
-  lList.forEach(p => { if (p && p.id && !byId.has(p.id)) byId.set(p.id, p); });
+  cList.forEach(p => { if (p && p.id && !deletedSet.has(p.id)) byId.set(p.id, p); });
+  lList.forEach(p => { if (p && p.id && !deletedSet.has(p.id) && !byId.has(p.id)) byId.set(p.id, p); });
   return Array.from(byId.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 }
 
@@ -1120,13 +1121,19 @@ async function loadFromCloud(manual = false) {
     }
 
     if (data) {
-      const mergedProtocols = mergeProtocolsSafe(data.protocols, localBackupData && localBackupData.protocols);
+      const mergedDeletedIds = Array.from(new Set([
+        ...(Array.isArray(data.deletedProtocolIds) ? data.deletedProtocolIds : []),
+        ...(localBackupData && Array.isArray(localBackupData.deletedProtocolIds) ? localBackupData.deletedProtocolIds : [])
+      ]));
+      const hadUnpersistedDeletions = Array.isArray(data.protocols) && data.protocols.some(p => p && p.id && mergedDeletedIds.includes(p.id));
+      const mergedProtocols = mergeProtocolsSafe(data.protocols, localBackupData && localBackupData.protocols, mergedDeletedIds);
       const hadLocalOnlyProtocols = (localBackupData && Array.isArray(localBackupData.protocols))
-        ? localBackupData.protocols.some(lp => lp && lp.id && !(Array.isArray(data.protocols) && data.protocols.some(cp => cp && cp.id === lp.id)))
+        ? localBackupData.protocols.some(lp => lp && lp.id && !mergedDeletedIds.includes(lp.id) && !(Array.isArray(data.protocols) && data.protocols.some(cp => cp && cp.id === lp.id)))
         : false;
       appData = data;
+      appData.deletedProtocolIds = mergedDeletedIds;
       appData.protocols = mergedProtocols;
-      if (hadLocalOnlyProtocols) {
+      if (hadLocalOnlyProtocols || hadUnpersistedDeletions) {
         saveToCloud();
       }
       if (!appData.teamkillLogs) appData.teamkillLogs = [];
@@ -1199,6 +1206,7 @@ async function saveToCloud() {
   try {
     const postRes = await fetch(GOOGLE_SCRIPT_URL, {
       method: "POST",
+      keepalive: true,
       redirect: "follow",
       headers: { "Content-Type": "text/plain;charset=utf-8" },
       body: JSON.stringify(appData)
@@ -2388,6 +2396,8 @@ function editProtocol(id) {
 
 async function deleteProtocol(id) {
   if (!confirm("Dieses Protokoll wirklich löschen?")) return;
+  if (!Array.isArray(appData.deletedProtocolIds)) appData.deletedProtocolIds = [];
+  if (!appData.deletedProtocolIds.includes(id)) appData.deletedProtocolIds.push(id);
   appData.protocols = (appData.protocols || []).filter(p => p.id !== id);
   await saveToCloud();
   updateStatsYearDropdown();
