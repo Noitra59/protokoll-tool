@@ -1198,27 +1198,40 @@ async function loadFromCloud(manual = false) {
   }
 }
 
+let saveQueuePromise = Promise.resolve();
+
 async function saveToCloud() {
   localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
   updateHistoryBadge();
   setSyncStatus("loading", "🔄 Speichere in Cloud...");
 
-  try {
-    const postRes = await fetch(GOOGLE_SCRIPT_URL, {
-      method: "POST",
-      keepalive: true,
-      redirect: "follow",
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify(appData)
-    });
-    if (!postRes.ok) {
-      throw new Error("HTTP " + postRes.status);
+  const runSave = async () => {
+    const payload = JSON.stringify(appData);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+    try {
+      const postRes = await fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        redirect: "follow",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: payload,
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      if (!postRes.ok) {
+        throw new Error("HTTP " + postRes.status);
+      }
+      setSyncStatus("ok", "☁️ Gespeichert & Synchronisiert");
+    } catch (err) {
+      clearTimeout(timeoutId);
+      setSyncStatus("err", "⚠️ Nur lokal gespeichert");
+      showToast("Achtung: Cloud-Speichern fehlgeschlagen.");
     }
-    setSyncStatus("ok", "☁️ Gespeichert & Synchronisiert");
-  } catch (err) {
-    setSyncStatus("err", "⚠️ Nur lokal gespeichert");
-    showToast("Achtung: Cloud-Speichern fehlgeschlagen.");
-  }
+  };
+
+  saveQueuePromise = saveQueuePromise.then(runSave, runSave);
+  return saveQueuePromise;
 }
 
 function showToast(msg) {
