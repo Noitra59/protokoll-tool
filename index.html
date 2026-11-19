@@ -1058,11 +1058,26 @@ function setSyncStatus(state, text) {
   }
 }
 
+function mergeProtocolsSafe(cloudProtocols, localProtocols) {
+  const cList = Array.isArray(cloudProtocols) ? cloudProtocols : [];
+  const lList = Array.isArray(localProtocols) ? localProtocols : [];
+  const byId = new Map();
+  cList.forEach(p => { if (p && p.id) byId.set(p.id, p); });
+  lList.forEach(p => { if (p && p.id && !byId.has(p.id)) byId.set(p.id, p); });
+  return Array.from(byId.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
 async function loadFromCloud(manual = false) {
   setSyncStatus("loading", "🔄 Lade Cloud-Daten...");
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+  let localBackupData = null;
+  try {
+    const rawLocal = localStorage.getItem("kk_protocol_tool_v1");
+    if (rawLocal) localBackupData = JSON.parse(rawLocal);
+  } catch (e) {}
 
   try {
     const response = await fetch(GOOGLE_SCRIPT_URL, { signal: controller.signal });
@@ -1070,7 +1085,15 @@ async function loadFromCloud(manual = false) {
     const data = await response.json();
 
     if (data) {
+      const mergedProtocols = mergeProtocolsSafe(data.protocols, localBackupData && localBackupData.protocols);
+      const hadLocalOnlyProtocols = (localBackupData && Array.isArray(localBackupData.protocols))
+        ? localBackupData.protocols.some(lp => lp && lp.id && !(Array.isArray(data.protocols) && data.protocols.some(cp => cp && cp.id === lp.id)))
+        : false;
       appData = data;
+      appData.protocols = mergedProtocols;
+      if (hadLocalOnlyProtocols) {
+        saveToCloud();
+      }
       if (!appData.teamkillLogs) appData.teamkillLogs = [];
       if (!appData.manualAttendance) appData.manualAttendance = {};
       if (!appData.templates || Object.keys(appData.templates).length === 0) {
