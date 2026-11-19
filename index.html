@@ -3239,8 +3239,9 @@ function generateBriefingReport() {
   const includeManualNapo = (filter === "all" || filter === "napo_all" || (tpls[filter] && tpls[filter].unit === "napo"));
   const includeManualBre = (filter === "all" || filter === "bre_all" || (tpls[filter] && tpls[filter].unit === "bre"));
 
-  if (appData.manualAttendance && !dateFrom && !dateTo) {
+ if (appData.manualAttendance && !dateFrom && !dateTo) {
     const yearsToProcess = yearFilter === "all"
+      ? Object.keys(appData.manualAttendance || {})
       : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
     yearsToProcess.forEach(yr => {
