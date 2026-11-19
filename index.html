@@ -1125,7 +1125,8 @@ async function loadFromCloud(manual = false) {
   } catch (e) {}
 
   try {
-    const response = await fetch(GOOGLE_SCRIPT_URL, {
+    const cacheBustUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+    const response = await fetch(cacheBustUrl, {
       method: "GET",
       redirect: "follow",
       cache: "no-store",
@@ -1229,6 +1230,16 @@ async function saveToCloud() {
   setSyncStatus("loading", "🔄 Speichere in Cloud...");
 
   const runSave = async () => {
+    if (Array.isArray(appData.protocols)) {
+      appData.protocols = appData.protocols.map(p => {
+        if (p && p.bbcode && p.summary !== "(Importiertes Protokoll)") {
+          const { bbcode, ...rest } = p;
+          return rest;
+        }
+        return p;
+      });
+    }
+    localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
     const payload = JSON.stringify(appData);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -1245,11 +1256,17 @@ async function saveToCloud() {
       if (!postRes.ok) {
         throw new Error("HTTP " + postRes.status);
       }
+      const resText = await postRes.text();
+      let resJson = null;
+      try { resJson = JSON.parse(resText); } catch (e) {}
+      if (resJson && resJson.status === "error") {
+        throw new Error(resJson.message || "Apps Script Fehler");
+      }
       setSyncStatus("ok", "☁️ Gespeichert & Synchronisiert");
     } catch (err) {
       clearTimeout(timeoutId);
       setSyncStatus("err", "⚠️ Nur lokal gespeichert");
-      showToast("Achtung: Cloud-Speichern fehlgeschlagen.");
+      showToast("Achtung: Cloud-Speichern fehlgeschlagen (" + (err && err.message ? err.message : "Fehler") + ").");
     }
   };
 
@@ -2198,36 +2215,37 @@ function formatGermanDate(isoDate) {
   return `${parts[2]}.${parts[1]}.${parts[0]}`;
 }
 
-function generateBBCode() {
-  const formatEl = document.getElementById("proto-format");
-  if (!formatEl) return "";
-  const fmtKey = formatEl.value;
+function buildBBCodeFromData(dataObj) {
+  const fmtKey = dataObj.format;
   const tpls = getTemplates();
   const cfg = tpls[fmtKey] || Object.values(tpls)[0];
   if (!cfg) return "";
 
   const unit = cfg.unit;
-  const dateStr = formatGermanDate(document.getElementById("proto-date").value);
+  const dateStr = formatGermanDate(dataObj.date);
 
-  const leader = document.getElementById("proto-leader").value;
-  const subleader = document.getElementById("proto-subleader") ? document.getElementById("proto-subleader").value : "/";
-  const scribe = document.getElementById("proto-scribe").value;
-  const troop = document.getElementById("proto-troop") ? document.getElementById("proto-troop").value : "";
-  const promotions = document.getElementById("proto-promotions") ? document.getElementById("proto-promotions").value : "/";
-  const awards = document.getElementById("proto-awards") ? document.getElementById("proto-awards").value : "/";
-  const mercs = document.getElementById("proto-mercs") ? document.getElementById("proto-mercs").value : "/";
-  const summary = document.getElementById("proto-summary") ? document.getElementById("proto-summary").value : "";
-  const pos = document.getElementById("proto-pos") ? document.getElementById("proto-pos").value : "";
-  const neg = document.getElementById("proto-neg") ? document.getElementById("proto-neg").value : "";
-  const notes = document.getElementById("proto-notes") ? document.getElementById("proto-notes").value : "";
+  const leader = dataObj.leader || "";
+  const subleader = dataObj.subleader || "/";
+  const scribe = dataObj.scribe || "";
+  const troop = dataObj.troop || "";
+  const promotions = dataObj.promotions || "/";
+  const awards = dataObj.awards || "/";
+  const mercs = dataObj.mercs || "/";
+  const summary = dataObj.summary || "";
+  const pos = dataObj.pos || "";
+  const neg = dataObj.neg || "";
+  const notes = dataObj.notes || "";
+  const attMap = dataObj.attendance || {};
 
   const presentList = [];
   const excusedList = [];
   const unexcusedList = [];
 
-  const relevantMembers = (appData.members || []).filter(m => m.active && isMemberEligibleForEventUnit(m, unit));
+  const relevantMembers = (appData.members || []).filter(m =>
+    (m.active && isMemberEligibleForEventUnit(m, unit)) || Object.prototype.hasOwnProperty.call(attMap, m.id)
+  );
   relevantMembers.forEach(m => {
-    const state = currentAttendance[m.id] || { status: "unexcused", note: "" };
+    const state = attMap[m.id] || { status: "unexcused", note: "" };
     if (unit === "napo" && isEichenwachtOnlyMember(m) && state.status !== "present") {
       return;
     }
@@ -2272,7 +2290,7 @@ function generateBBCode() {
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n`;
 
   if (cfg.isTraining) {
     bb += `[b]Trainingseinheiten:[/b] ${summary}\n\n`;
@@ -2285,6 +2303,27 @@ function generateBBCode() {
   bb += `[i]Anmerkungen:[/i] ${notes}`;
 
   return bb;
+}
+
+function generateBBCode() {
+  const formatEl = document.getElementById("proto-format");
+  if (!formatEl) return "";
+  return buildBBCodeFromData({
+    format: formatEl.value,
+    date: document.getElementById("proto-date").value,
+    leader: document.getElementById("proto-leader").value,
+    subleader: document.getElementById("proto-subleader") ? document.getElementById("proto-subleader").value : "/",
+    scribe: document.getElementById("proto-scribe").value,
+    troop: document.getElementById("proto-troop") ? document.getElementById("proto-troop").value : "",
+    promotions: document.getElementById("proto-promotions") ? document.getElementById("proto-promotions").value : "/",
+    awards: document.getElementById("proto-awards") ? document.getElementById("proto-awards").value : "/",
+    mercs: document.getElementById("proto-mercs") ? document.getElementById("proto-mercs").value : "/",
+    summary: document.getElementById("proto-summary") ? document.getElementById("proto-summary").value : "",
+    pos: document.getElementById("proto-pos") ? document.getElementById("proto-pos").value : "",
+    neg: document.getElementById("proto-neg") ? document.getElementById("proto-neg").value : "",
+    notes: document.getElementById("proto-notes") ? document.getElementById("proto-notes").value : "",
+    attendance: currentAttendance
+  });
 }
 
 function parseBBCodeToHTML(bb) {
@@ -2359,8 +2398,7 @@ async function saveProtocol() {
     pos: document.getElementById("proto-pos").value,
     neg: document.getElementById("proto-neg").value,
     notes: document.getElementById("proto-notes").value,
-    attendance: attendanceSnapshot,
-    bbcode: generateBBCode()
+    attendance: attendanceSnapshot
   };
 
   if (!appData.protocols) appData.protocols = [];
@@ -2554,7 +2592,8 @@ function renderHistory() {
 function copySavedBBCode(id) {
   const p = (appData.protocols || []).find(x => x.id === id);
   if (p) {
-    navigator.clipboard.writeText(p.bbcode);
+    const bbText = p.bbcode || buildBBCodeFromData(p);
+    navigator.clipboard.writeText(bbText);
     showToast("BBCode aus Verlauf kopiert!");
   }
 }
