@@ -2700,10 +2700,17 @@ function renderStatsChart() {
   const tpls = getTemplates();
   const eventsByKey = {};
 
+  const isFormatAllowedForChart = (fmtKey) => {
+    const cfg = tpls[fmtKey];
+    const unit = cfg ? cfg.unit : ((fmtKey && fmtKey.includes("bre")) ? "bre" : "napo");
+    if (filter === "bre_all") return unit === "bre";
+    if (filter === "napo_all") return unit === "napo";
+    if (filter && filter !== "all") return fmtKey === filter;
+    return true;
+  };
+
   (appData.protocols || []).forEach(p => {
-    const cfg = tpls[p.format];
-    const isNapo = cfg ? (cfg.unit === "napo") : (p.format && !p.format.includes("bre"));
-    if (!isNapo) return;
+    if (!isFormatAllowedForChart(p.format)) return;
     if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${p.date || ""}_${p.format || ""}`;
@@ -2723,9 +2730,7 @@ function renderStatsChart() {
   });
 
   (appData.teamkillLogs || []).forEach(t => {
-    const cfg = tpls[t.format];
-    const isNapo = cfg ? (cfg.unit === "napo") : (t.format && !t.format.includes("bre"));
-    if (!isNapo) return;
+    if (!isFormatAllowedForChart(t.format)) return;
     if (!matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${t.date || ""}_${t.format || ""}`;
@@ -2757,10 +2762,10 @@ function renderStatsChart() {
         hasTk: Boolean(item.hasTk)
       };
     } else {
-      byDate[dt].pres = Math.max(byDate[dt].pres, item.pres);
-      byDate[dt].exc = Math.max(byDate[dt].exc, item.exc);
-      byDate[dt].unexc = Math.max(byDate[dt].unexc, item.unexc);
-      byDate[dt].tk = Math.max(byDate[dt].tk, item.tk);
+      byDate[dt].pres += item.pres;
+      byDate[dt].exc += item.exc;
+      byDate[dt].unexc += item.unexc;
+      byDate[dt].tk += item.tk;
       byDate[dt].hasActivity = byDate[dt].hasActivity || Boolean(item.hasActivity);
       byDate[dt].hasTk = byDate[dt].hasTk || Boolean(item.hasTk);
     }
@@ -2783,7 +2788,8 @@ function renderStatsChart() {
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Keine Nr59-Daten im gewählten Zeitraum vorhanden", cssWidth / 2, cssHeight / 2);
+    const unitLabel = filter === "bre_all" ? "Eichenwacht" : (filter === "napo_all" ? "Nr59" : "Event");
+    ctx.fillText(`Keine ${unitLabel}-Daten im gewählten Zeitraum vorhanden`, cssWidth / 2, cssHeight / 2);
     return;
   }
 
