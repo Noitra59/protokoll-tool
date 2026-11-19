@@ -850,10 +850,11 @@
               <th>Datum</th>
               <th>Event</th>
               <th>Anwesenheitsstatus</th>
+              <th style="width: 110px;">Aktion</th>
             </tr>
           </thead>
           <tbody id="stats-member-events-body">
-            <tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>
+            <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>
           </tbody>
         </table>
       </div>
@@ -4255,7 +4256,7 @@ function renderMemberEventHistory() {
       pageSelect.innerHTML = `<option value="1">Seite 1</option>`;
       pageSelect.value = "1";
     }
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>`;
     return;
   }
 
@@ -4296,7 +4297,7 @@ function renderMemberEventHistory() {
 
   if (rows.length === 0) {
     if (pageInfo) pageInfo.textContent = "0 Einträge";
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
     return;
   }
 
@@ -4327,9 +4328,64 @@ function renderMemberEventHistory() {
       <td><strong>${formatGermanDate(p.date)}</strong></td>
       <td>${eventName}</td>
       <td>${statusHtml}</td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteMemberEventParticipation('${p.id}', '${memberId}')">🗑️ Entfernen</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
+}
+
+async function deleteMemberEventParticipation(protocolId, memberId) {
+  const proto = (appData.protocols || []).find(p => String(p.id) === String(protocolId));
+  if (!proto || !proto.attendance || !Object.prototype.hasOwnProperty.call(proto.attendance, memberId)) {
+    return;
+  }
+
+  const member = (appData.members || []).find(m => String(m.id) === String(memberId));
+  const memberName = member ? (member.napoName || member.breName || memberId) : memberId;
+  const tpls = getTemplates();
+  const eventName = (tpls[proto.format] && tpls[proto.format].name) ? tpls[proto.format].name : proto.format;
+  const dateLabel = formatGermanDate(proto.date);
+
+  if (!confirm(`Teilnahme von '${memberName}' am ${eventName} (${dateLabel}) komplett aus dem Protokoll und der Statistik entfernen?`)) {
+    return;
+  }
+
+  const nextAttendance = {};
+  for (const [k, v] of Object.entries(proto.attendance)) {
+    if (String(k) !== String(memberId)) {
+      nextAttendance[k] = v;
+    }
+  }
+  proto.attendance = nextAttendance;
+
+  const editProtoIdEl = document.getElementById("edit-protocol-id");
+  const currentProtoFmtEl = document.getElementById("proto-format");
+  const currentProtoDateEl = document.getElementById("proto-date");
+  if (
+    (editProtoIdEl && String(editProtoIdEl.value) === String(protocolId)) ||
+    (currentProtoFmtEl && currentProtoFmtEl.value === proto.format && currentProtoDateEl && currentProtoDateEl.value === proto.date)
+  ) {
+    if (Object.prototype.hasOwnProperty.call(currentAttendance, memberId)) {
+      const nextCurrAtt = {};
+      for (const [k, v] of Object.entries(currentAttendance)) {
+        if (String(k) !== String(memberId)) nextCurrAtt[k] = v;
+      }
+      currentAttendance = nextCurrAtt;
+      renderAttendanceList();
+      updateOutput();
+    }
+  }
+
+  await saveToCloud();
+  renderStats();
+  renderStatsChart();
+  renderMemberEventHistory();
+  if (document.getElementById("tab-history") && document.getElementById("tab-history").classList.contains("active")) {
+    renderHistory();
+  }
+  showToast(`'${memberName}' für ${dateLabel} aus der Statistik entfernt.`);
 }
 
 if (typeof ResizeObserver !== "undefined") {
