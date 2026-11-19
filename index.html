@@ -2601,6 +2601,21 @@ function renderStatsChart() {
 
   ctx.clearRect(0, 0, rect.width, rect.height);
 
+  const chartModeEl = document.getElementById("stats-chart-mode");
+  const chartMode = chartModeEl ? chartModeEl.value : "activity";
+  const legendBox = document.getElementById("chart-legend-box");
+  if (legendBox) {
+    if (chartMode === "teamkills") {
+      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
+    } else {
+      legendBox.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
+      `;
+    }
+  }
+
   const statsFilterEl = document.getElementById("stats-filter");
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const dateFromEl = document.getElementById("stats-date-from");
