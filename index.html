@@ -1529,6 +1529,19 @@ function saveLocalExcusedEvent(memberId, eventKey) {
   localStorage.setItem("kk_member_excused_events", JSON.stringify(map));
 }
 
+function isEichenwachtOnlyMember(member) {
+  if (!member) return false;
+  return Boolean(member.inBre && !member.inNapo);
+}
+
+function isMemberEligibleForEventUnit(member, unit) {
+  if (!member) return false;
+  if (unit === "napo" && isEichenwachtOnlyMember(member)) {
+    return false;
+  }
+  return unit === "bre" ? Boolean(member.inBre) : Boolean(member.inNapo);
+}
+
 function normalizeBool(val) {
   if (typeof val === "boolean") return val;
   if (typeof val === "string") return val.trim().toLowerCase() === "true";
@@ -1637,7 +1650,7 @@ function renderAttendanceList() {
   if (!container) return;
   container.innerHTML = "";
 
-  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+  const relevantMembers = (appData.members || []).filter(m => m.active && isMemberEligibleForEventUnit(m, unit));
 
   relevantMembers.forEach(m => {
     if (!currentAttendance[m.id]) {
@@ -2193,9 +2206,12 @@ function generateBBCode() {
   const excusedList = [];
   const unexcusedList = [];
 
-  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
+  const relevantMembers = (appData.members || []).filter(m => m.active && isMemberEligibleForEventUnit(m, unit));
   relevantMembers.forEach(m => {
     const state = currentAttendance[m.id] || { status: "unexcused", note: "" };
+    if (unit === "napo" && isEichenwachtOnlyMember(m) && state.status !== "present") {
+      return;
+    }
     const name = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
     
     let cleanNote = (state.note || "").trim();
@@ -2297,7 +2313,7 @@ async function saveProtocol() {
   const editId = editProtoIdEl ? editProtoIdEl.value : "";
 
   const attendanceSnapshot = {};
-  (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
+  (appData.members || []).filter(m => m.active && isMemberEligibleForEventUnit(m, unit)).forEach(m => {
     attendanceSnapshot[m.id] = currentAttendance[m.id] ? { ...currentAttendance[m.id] } : { status: "unexcused", note: "" };
   });
 
@@ -2396,9 +2412,15 @@ function renderHistory() {
   const tpls = getTemplates();
   pageProtocols.forEach(p => {
     const cfg = tpls[p.format];
+    const pUnit = cfg ? cfg.unit : "napo";
+    const memberById = {};
+    (appData.members || []).forEach(m => { memberById[m.id] = m; });
     let pres = 0, exc = 0, unexc = 0;
     if (p.attendance) {
-      Object.values(p.attendance).forEach(a => {
+      Object.entries(p.attendance).forEach(([mId, a]) => {
+        if (!a) return;
+        const m = memberById[mId];
+        if (pUnit === "napo" && isEichenwachtOnlyMember(m) && a.status !== "present") return;
         if (a.status === "present") pres++;
         else if (a.status === "excused") exc++;
         else unexc++;
@@ -2573,6 +2595,7 @@ function renderStats() {
   const dateFrom = dateFromEl ? dateFromEl.value : "";
   const dateTo = dateToEl ? dateToEl.value : "";
 
+  const tpls = getTemplates();
   const filteredProtocols = (appData.protocols || []).filter(p => matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo));
 
   const includeManualNapo = (filter === "all" || filter === "napo_all");
@@ -2585,8 +2608,13 @@ function renderStats() {
 
     filteredProtocols.forEach(p => {
       if (p.attendance && p.attendance[m.id]) {
-        total++;
+        const pCfg = tpls[p.format];
+        const pUnit = pCfg ? pCfg.unit : "napo";
         const st = p.attendance[m.id].status;
+        if (pUnit === "napo" && isEichenwachtOnlyMember(m) && st !== "present") {
+          return;
+        }
+        total++;
         if (st === "present") pres++;
         else if (st === "excused") exc++;
         else unexc++;
@@ -2771,8 +2799,14 @@ function renderStatsChart() {
       eventsByKey[key].hasActivity = true;
     }
     if (p.attendance) {
-      Object.values(p.attendance).forEach(a => {
+      const pCfg = tpls[p.format];
+      const pUnit = pCfg ? pCfg.unit : "napo";
+      const memberById = {};
+      (appData.members || []).forEach(m => { memberById[m.id] = m; });
+      Object.entries(p.attendance).forEach(([mId, a]) => {
         if (!a) return;
+        const m = memberById[mId];
+        if (pUnit === "napo" && isEichenwachtOnlyMember(m) && a.status !== "present") return;
         if (a.status === "present") eventsByKey[key].pres++;
         else if (a.status === "excused") eventsByKey[key].exc++;
         else eventsByKey[key].unexc++;
@@ -3349,7 +3383,16 @@ function generateBriefingReport() {
   filteredProtocols.forEach(p => {
     let protoPresentCount = 0;
     if (p.attendance) {
+      const pCfg = tpls[p.format];
+      const pUnit = pCfg ? pCfg.unit : "napo";
+      const memberById = {};
+      (appData.members || []).forEach(m => { memberById[m.id] = m; });
       Object.entries(p.attendance).forEach(([mId, a]) => {
+        if (!a) return;
+        const m = memberById[mId];
+        if (pUnit === "napo" && isEichenwachtOnlyMember(m) && a.status !== "present") {
+          return;
+        }
         if (a.status === "present") {
           totalPresenceSum++;
           protoPresentCount++;
@@ -3963,10 +4006,18 @@ function renderMemberEventHistory() {
 
   const tpls = getTemplates();
 
+  const selectedMember = (appData.members || []).find(m => m.id === memberId);
   const rows = (appData.protocols || [])
     .filter(p => {
       if (eventFilter !== "all" && p.format !== eventFilter) return false;
-      return Boolean(p.attendance && p.attendance[memberId]);
+      const entry = p.attendance && p.attendance[memberId];
+      if (!entry) return false;
+      const pCfg = tpls[p.format];
+      const pUnit = pCfg ? pCfg.unit : "napo";
+      if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember) && entry.status !== "present") {
+        return false;
+      }
+      return true;
     })
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
