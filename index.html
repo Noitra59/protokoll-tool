@@ -2508,9 +2508,9 @@ function renderStats() {
       }
     });
 
-    if (appData.manualAttendance && !dateFrom && !dateTo) {
-      const yearsToProcess = yearFilter === "all"
-        : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
+   const yearToProcess = yearFilter === "all"
+  ? Object.keys(appData.manualAttendance || {})
+  : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
       yearsToProcess.forEach(yr => {
         const yearObj = appData.manualAttendance[yr];
