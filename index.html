@@ -301,6 +301,7 @@
   .badge-napo { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
   .badge-bre { background: rgba(5, 150, 105, 0.22); color: #34d399; border: 1px solid rgba(5, 150, 105, 0.45); }
   .badge-inactive { background: rgba(156, 163, 175, 0.2); color: #9ca3af; }
+  .badge-pflicht { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.45); }
 
   .toast {
     position: fixed;
@@ -960,8 +961,8 @@
         <div class="form-group">
           <label>Pflicht / Freiwillig (nur Tabelle)</label>
           <select id="new-tpl-obligation">
-            <option value="mandatory">Pflichtevent</option>
-            <option value="voluntary">Freiwilliges Event</option>
+            <option value="mandatory">Pflicht</option>
+            <option value="voluntary">Freiwillig</option>
           </select>
         </div>
       </div>
@@ -2060,13 +2061,15 @@ function renderTkStats() {
   const dateTo = dateToEl ? dateToEl.value : "";
 
   const tpls = getTemplates();
+  const isTkTrackedEvent = (fmtKey) => {
+    const cfg = tpls[fmtKey];
+    return Boolean(cfg && cfg.unit === "napo" && cfg.trackTeamkills !== false);
+  };
   const filteredProtocols = (appData.protocols || []).filter(p => {
-    const cfg = tpls[p.format];
-    return cfg && cfg.unit === "napo" && matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo);
+    return isTkTrackedEvent(p.format) && matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo);
   });
   const filteredTkLogs = (appData.teamkillLogs || []).filter(t => {
-    const cfg = tpls[t.format];
-    return cfg && cfg.unit === "napo" && matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo);
+    return isTkTrackedEvent(t.format) && matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo);
   });
 
   const memberStats = [];
@@ -3385,7 +3388,7 @@ function renderTemplatesTable() {
     const obligationVal = cfg.obligation || 'mandatory';
     const obligationBadge = obligationVal === 'voluntary'
       ? '<span class="badge badge-inactive">Freiwillig</span>'
-      : '<span class="badge badge-event">Pflichtevent</span>';
+      : '<span class="badge badge-pflicht">Pflicht</span>';
       
     const unitBadge = cfg.unit === 'bre' 
       ? '<span class="badge badge-bre">Eichenwacht</span>' 
