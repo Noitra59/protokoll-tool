@@ -528,22 +528,30 @@
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
         <h2 style="border:none; margin:0; padding:0;">Gespeicherte Protokolle</h2>
-        <div style="display:flex; gap:0.5rem; align-items:center;">
-          <span id="history-page-info" style="font-size:0.85rem; color:var(--text-muted);"></span>
-          <label for="history-page-select" style="margin:0; font-size:0.85rem;">Seite:</label>
-          <select id="history-page-select" onchange="onHistoryPageChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
-            <option value="1">Seite 1</option>
-          </select>
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <label for="history-event-filter" style="margin:0; font-size:0.85rem;">Event:</label>
+            <select id="history-event-filter" onchange="onHistoryFilterChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
+              <option value="all">Alle Events</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.5rem; align-items:center;">
+            <span id="history-page-info" style="font-size:0.85rem; color:var(--text-muted);"></span>
+            <label for="history-page-select" style="margin:0; font-size:0.85rem;">Seite:</label>
+            <select id="history-page-select" onchange="onHistoryPageChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
+              <option value="1">Seite 1</option>
+            </select>
+          </div>
         </div>
       </div>
       <table>
         <thead>
           <tr>
-            <th>Datum</th>
+            <th class="sortable" onclick="sortHistoryTable('date')">Datum <span id="sort-ind-hist-date">▼</span></th>
             <th>Format / Event</th>
-            <th>Anwesend</th>
-            <th>Abgemeldet</th>
-            <th>Fehlend</th>
+            <th class="sortable" onclick="sortHistoryTable('present')">Anwesend <span id="sort-ind-hist-present"></span></th>
+            <th class="sortable" onclick="sortHistoryTable('excused')">Abgemeldet <span id="sort-ind-hist-excused"></span></th>
+            <th class="sortable" onclick="sortHistoryTable('unexcused')">Fehlend <span id="sort-ind-hist-unexcused"></span></th>
             <th>Aktionen</th>
           </tr>
         </thead>
@@ -1277,6 +1285,7 @@ function switchTab(tabId, btnElement) {
   }
   if (tabId === "history") {
     currentHistoryPage = 1;
+    updateHistoryEventDropdown();
     renderHistory();
   }
     if (tabId === "stats") {
@@ -2367,6 +2376,43 @@ function updateHistoryBadge() {
 
 const HISTORY_PAGE_SIZE = 50;
 let currentHistoryPage = 1;
+let historySortCol = "date";
+let historySortAsc = false;
+
+function updateHistoryEventDropdown() {
+  const select = document.getElementById("history-event-filter");
+  if (!select) return;
+  const currentVal = select.value || "all";
+  const tpls = getTemplates();
+  select.innerHTML = `<option value="all">Alle Events</option>`;
+  for (const [key, cfg] of Object.entries(tpls)) {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = cfg.name || key;
+    select.appendChild(opt);
+  }
+  if (select.querySelector(`option[value="${currentVal}"]`)) {
+    select.value = currentVal;
+  } else {
+    select.value = "all";
+  }
+}
+
+function onHistoryFilterChange() {
+  currentHistoryPage = 1;
+  renderHistory();
+}
+
+function sortHistoryTable(col) {
+  if (historySortCol === col) {
+    historySortAsc = !historySortAsc;
+  } else {
+    historySortCol = col;
+    historySortAsc = (col === "date") ? true : false;
+  }
+  currentHistoryPage = 1;
+  renderHistory();
+}
 
 function onHistoryPageChange() {
   const select = document.getElementById("history-page-select");
@@ -2377,14 +2423,69 @@ function onHistoryPageChange() {
 }
 
 function renderHistory() {
+  updateHistoryEventDropdown();
   const tbody = document.getElementById("history-table-body");
   const pageSelect = document.getElementById("history-page-select");
   const pageInfo = document.getElementById("history-page-info");
+  const eventFilterEl = document.getElementById("history-event-filter");
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  const sortedProtocols = [...(appData.protocols || [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  const totalCount = sortedProtocols.length;
+  ["date", "present", "excused", "unexcused"].forEach(c => {
+    const ind = document.getElementById(`sort-ind-hist-${c}`);
+    if (ind) {
+      ind.textContent = (historySortCol === c) ? (historySortAsc ? "▲" : "▼") : "";
+    }
+  });
+
+  const eventFilter = eventFilterEl ? (eventFilterEl.value || "all") : "all";
+  const tpls = getTemplates();
+  const memberById = {};
+  (appData.members || []).forEach(m => { memberById[m.id] = m; });
+
+  const enriched = (appData.protocols || [])
+    .filter(p => eventFilter === "all" || p.format === eventFilter)
+    .map(p => {
+      const cfg = tpls[p.format];
+      const pUnit = cfg ? cfg.unit : "napo";
+      let pres = 0, exc = 0, unexc = 0;
+      if (p.attendance) {
+        Object.entries(p.attendance).forEach(([mId, a]) => {
+          if (!a) return;
+          const m = memberById[mId];
+          if (pUnit === "napo" && isEichenwachtOnlyMember(m) && a.status !== "present") return;
+          if (a.status === "present") pres++;
+          else if (a.status === "excused") exc++;
+          else unexc++;
+        });
+      }
+      return {
+        proto: p,
+        eventName: cfg ? cfg.name : p.format,
+        pres,
+        exc,
+        unexc
+      };
+    });
+
+  enriched.sort((a, b) => {
+    let cmp = 0;
+    if (historySortCol === "present") {
+      cmp = a.pres - b.pres;
+    } else if (historySortCol === "excused") {
+      cmp = a.exc - b.exc;
+    } else if (historySortCol === "unexcused") {
+      cmp = a.unexc - b.unexc;
+    } else {
+      cmp = (a.proto.date || "").localeCompare(b.proto.date || "");
+    }
+    if (cmp === 0) {
+      cmp = (b.proto.date || "").localeCompare(a.proto.date || "");
+    }
+    return historySortAsc ? cmp : -cmp;
+  });
+
+  const totalCount = enriched.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / HISTORY_PAGE_SIZE));
 
   if (currentHistoryPage > totalPages) currentHistoryPage = totalPages;
@@ -2405,42 +2506,26 @@ function renderHistory() {
 
   if (totalCount === 0) {
     if (pageInfo) pageInfo.textContent = "0 Einträge";
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Noch keine Protokolle gespeichert.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">Keine Protokolle für diese Auswahl gefunden.</td></tr>`;
     return;
   }
 
   const startIndex = (currentHistoryPage - 1) * HISTORY_PAGE_SIZE;
-  const pageProtocols = sortedProtocols.slice(startIndex, startIndex + HISTORY_PAGE_SIZE);
+  const pageItems = enriched.slice(startIndex, startIndex + HISTORY_PAGE_SIZE);
 
   if (pageInfo) {
-    pageInfo.textContent = `Zeige ${startIndex + 1}–${startIndex + pageProtocols.length} von ${totalCount}`;
+    pageInfo.textContent = `Zeige ${startIndex + 1}–${startIndex + pageItems.length} von ${totalCount}`;
   }
 
-  const tpls = getTemplates();
-  pageProtocols.forEach(p => {
-    const cfg = tpls[p.format];
-    const pUnit = cfg ? cfg.unit : "napo";
-    const memberById = {};
-    (appData.members || []).forEach(m => { memberById[m.id] = m; });
-    let pres = 0, exc = 0, unexc = 0;
-    if (p.attendance) {
-      Object.entries(p.attendance).forEach(([mId, a]) => {
-        if (!a) return;
-        const m = memberById[mId];
-        if (pUnit === "napo" && isEichenwachtOnlyMember(m) && a.status !== "present") return;
-        if (a.status === "present") pres++;
-        else if (a.status === "excused") exc++;
-        else unexc++;
-      });
-    }
-
+  pageItems.forEach(item => {
+    const p = item.proto;
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${formatGermanDate(p.date)}</strong></td>
-      <td>${cfg ? cfg.name : p.format}</td>
-      <td style="color:var(--success); font-weight:600;">${pres}</td>
-      <td style="color:var(--warning);">${exc}</td>
-      <td style="color:var(--danger);">${unexc}</td>
+      <td>${item.eventName}</td>
+      <td style="color:var(--success); font-weight:600;">${item.pres}</td>
+      <td style="color:var(--warning);">${item.exc}</td>
+      <td style="color:var(--danger);">${item.unexc}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm btn-secondary" onclick="copySavedBBCode('${p.id}')">📋 BBCode</button>
         <button class="btn btn-sm" onclick="editProtocol('${p.id}')">✏️ Bearbeiten</button>
