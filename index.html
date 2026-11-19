@@ -729,12 +729,21 @@
           <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
           <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
         </div>
-        <div style="display:flex; gap:0.4rem; align-items:center;">
-          <label style="margin:0; font-size:0.8rem;">Diagramm-Ansicht:</label>
-          <select id="stats-chart-mode" onchange="renderStatsChart()" style="width:auto; padding:0.25rem 0.5rem; font-size:0.82rem;">
-            <option value="activity" selected>Aktivität</option>
-            <option value="teamkills">Teamkills</option>
-          </select>
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <label style="margin:0; font-size:0.8rem;">Diagramm-Typ:</label>
+            <select id="stats-chart-type" onchange="renderStatsChart()" style="width:auto; padding:0.25rem 0.5rem; font-size:0.82rem;">
+              <option value="bar" selected>Balkendiagramm</option>
+              <option value="line">Liniendiagramm</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <label style="margin:0; font-size:0.8rem;">Diagramm-Ansicht:</label>
+            <select id="stats-chart-mode" onchange="renderStatsChart()" style="width:auto; padding:0.25rem 0.5rem; font-size:0.82rem;">
+              <option value="activity" selected>Aktivität</option>
+              <option value="teamkills">Teamkills</option>
+            </select>
+          </div>
         </div>
       </div>
       <div class="chart-container">
@@ -926,8 +935,21 @@
           </select>
         </div>
         <div class="form-group">
+          <label>Pflicht / Freiwillig (nur Tabelle)</label>
+          <select id="new-tpl-obligation">
+            <option value="mandatory">Pflichtevent</option>
+            <option value="voluntary">Freiwilliges Event</option>
+          </select>
+        </div>
+      </div>
+      <div class="grid-2" style="gap: 0.75rem;">
+        <div class="form-group">
           <label>Standard-Leiter / Offizier</label>
           <input type="text" id="new-tpl-leader" value="Oberst Darthkiller, Oberst Lama">
+        </div>
+        <div class="form-group">
+          <label>Standard-Schriftführer</label>
+          <input type="text" id="new-tpl-scribe" value="Fähnrich Lorenz">
         </div>
       </div>
       <div class="grid-2" style="gap: 0.75rem;">
@@ -961,6 +983,7 @@
             <th>Schlüssel</th>
             <th>Anzeigename</th>
             <th>Typ</th>
+            <th>Teilnahme</th>
             <th>Einheit</th>
             <th>Teamkills</th>
             <th>Aktionen</th>
@@ -2461,6 +2484,8 @@ function renderStats() {
 
   const chartModeEl = document.getElementById("stats-chart-mode");
   const chartMode = chartModeEl ? chartModeEl.value : "activity";
+  const chartTypeEl = document.getElementById("stats-chart-type");
+  const chartType = chartTypeEl ? chartTypeEl.value : "bar";
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
@@ -2737,9 +2762,17 @@ function renderStatsChart() {
   const divisor = chartMode === "teamkills" ? 2.2 : 4;
   const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 14 : 7, (barGroupWidth / divisor) - 1));
 
+  const seriesMeta = chartMode === "teamkills"
+    ? [{ key: "tk", color: "#a855f7" }]
+    : [
+        { key: "pres", color: "#10b981" },
+        { key: "exc", color: "#f59e0b" },
+        { key: "unexc", color: "#ef4444" }
+      ];
+
   dataPoints.forEach((d, idx) => {
     const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-    
+
     if (dataPoints.length <= 15 || idx % Math.ceil(dataPoints.length / 12) === 0) {
       ctx.fillStyle = "#9ba1a6";
       ctx.font = "9px sans-serif";
@@ -2747,26 +2780,47 @@ function renderStatsChart() {
       ctx.fillText(d.date.substring(0, 5), groupX, rect.height - 10);
     }
 
-    const values = chartMode === "teamkills"
-      ? [{ val: d.tk, color: "#a855f7" }]
-      : [
-          { val: d.pres, color: "#10b981" },
-          { val: d.exc, color: "#f59e0b" },
-          { val: d.unexc, color: "#ef4444" }
-        ];
+    if (chartType === "bar") {
+      const values = seriesMeta.map(s => ({ val: d[s.key], color: s.color }));
+      const totalGroupW = values.length * (barWidth + 2);
+      let startX = groupX - (totalGroupW / 2);
 
-    const totalGroupW = values.length * (barWidth + 2);
-    let startX = groupX - (totalGroupW / 2);
+      values.forEach((v, vIdx) => {
+        const h = (v.val / maxVal) * chartHeight;
+        const x = startX + vIdx * (barWidth + 2);
+        const y = paddingTop + chartHeight - h;
 
-    values.forEach((v, vIdx) => {
-      const h = (v.val / maxVal) * chartHeight;
-      const x = startX + vIdx * (barWidth + 2);
-      const y = paddingTop + chartHeight - h;
-
-      ctx.fillStyle = v.color;
-      ctx.fillRect(x, y, barWidth, h);
-    });
+        ctx.fillStyle = v.color;
+        ctx.fillRect(x, y, barWidth, h);
+      });
+    }
   });
+
+  if (chartType === "line") {
+    seriesMeta.forEach(s => {
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      dataPoints.forEach((d, idx) => {
+        const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
+        const h = (d[s.key] / maxVal) * chartHeight;
+        const y = paddingTop + chartHeight - h;
+        if (idx === 0) ctx.moveTo(groupX, y);
+        else ctx.lineTo(groupX, y);
+      });
+      ctx.stroke();
+
+      dataPoints.forEach((d, idx) => {
+        const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
+        const h = (d[s.key] / maxVal) * chartHeight;
+        const y = paddingTop + chartHeight - h;
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(groupX, y, 3, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    });
+  }
 }
 
 function renderManualAttendanceList() {
@@ -3065,6 +3119,7 @@ async function saveTemplate() {
   const name = document.getElementById("new-tpl-name").value.trim();
   const prefix = document.getElementById("new-tpl-prefix").value.trim();
   const unit = document.getElementById("new-tpl-unit").value;
+  const obligation = document.getElementById("new-tpl-obligation") ? document.getElementById("new-tpl-obligation").value : "mandatory";
   const isTraining = document.getElementById("new-tpl-is-training").value === "true";
   const leader = document.getElementById("new-tpl-leader").value.trim();
   const scribe = document.getElementById("new-tpl-scribe").value.trim();
@@ -3088,6 +3143,7 @@ async function saveTemplate() {
     name: name,
     titlePrefix: prefix,
     unit: unit,
+    obligation: obligation,
     isTraining: isTraining,
     defaultLeader: leader,
     defaultScribe: scribe,
@@ -3116,6 +3172,9 @@ function editTemplate(key) {
   document.getElementById("new-tpl-name").value = cfg.name;
   document.getElementById("new-tpl-prefix").value = cfg.titlePrefix;
   document.getElementById("new-tpl-unit").value = cfg.unit;
+  if (document.getElementById("new-tpl-obligation")) {
+    document.getElementById("new-tpl-obligation").value = cfg.obligation || "mandatory";
+  }
   document.getElementById("new-tpl-is-training").value = cfg.isTraining ? "true" : "false";
   document.getElementById("new-tpl-leader").value = cfg.defaultLeader || "";
   document.getElementById("new-tpl-scribe").value = cfg.defaultScribe || "";
@@ -3136,6 +3195,9 @@ function cancelEditTemplate() {
   document.getElementById("new-tpl-name").value = "";
   document.getElementById("new-tpl-prefix").value = "k.k. Protokoll des Events am";
   document.getElementById("new-tpl-unit").value = "napo";
+  if (document.getElementById("new-tpl-obligation")) {
+    document.getElementById("new-tpl-obligation").value = "mandatory";
+  }
   document.getElementById("new-tpl-is-training").value = "false";
   document.getElementById("new-tpl-leader").value = "Oberst Darthkiller, Oberst Lama";
   document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
@@ -3181,6 +3243,11 @@ function renderTemplatesTable() {
     const typeBadge = cfg.isTraining 
       ? '<span class="badge badge-training">Training</span>' 
       : '<span class="badge badge-event">Event</span>';
+
+    const obligationVal = cfg.obligation || 'mandatory';
+    const obligationBadge = obligationVal === 'voluntary'
+      ? '<span class="badge badge-inactive">Freiwillig</span>'
+      : '<span class="badge badge-event">Pflichtevent</span>';
       
     const unitBadge = cfg.unit === 'bre' 
       ? '<span class="badge badge-bre">Eichenwacht</span>' 
@@ -3195,6 +3262,7 @@ function renderTemplatesTable() {
       <td><code>${key}</code></td>
       <td><strong>${cfg.name}</strong></td>
       <td>${typeBadge}</td>
+      <td>${obligationBadge}</td>
       <td>${unitBadge}</td>
       <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
       <td style="display:flex; gap:0.4rem;">
