@@ -3782,9 +3782,22 @@ function stripBBCodeTags(str) {
 
 function normalizeMemberMatchName(str) {
   return (str || "")
-    .toLowerCase()
+    .toString()
+    .replace(/[​-‍﻿]/g, "")
+    .replace(/[“”„‟«»]/g, '"')
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[–—−‐‑]/g, "-")
     .replace(/\s+/g, " ")
+    .toLowerCase()
     .trim();
+}
+
+function stripLeadingRankPrefix(str) {
+  const norm = normalizeMemberMatchName(str);
+  if (!norm) return "";
+  const rankPattern = /^(?:(?:k\.?\s*k\.?|k\.u\.k\.?|feldmarschall(?:leutnant)?|general(?:major|leutnant|oberst)?|oberst(?:leutnant)?|major|hauptmann|rittmeister|oberleutnant|leutnant|fähnrich|faehnrich|kadett|offizier|feldwebel|wachtmeister|zugführer|zugfuehrer|korporal|gefreiter|soldat|schütze|schuetze|kanonier|dragoner|husar|ulan|jäger|jaeger|druide|banneret|herr|meister|bruder|dr\.?|prof\.?)\s+)+/i;
+  const stripped = norm.replace(rankPattern, "").trim();
+  return stripped || norm;
 }
 
 function extractNameAndNote(line) {
@@ -3896,27 +3909,58 @@ function findMatchingMember(rawName, unit) {
   if (!target) return null;
 
   const members = appData.members || [];
+  const getCandidates = (m) => {
+    if (!m) return [];
+    const primary = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+    const secondary = unit === "bre" ? m.napoName : m.breName;
+    return [primary, secondary, m.name, m.SpielerName, m.Name].filter(Boolean);
+  };
 
-  let match = members.find(m => {
-    const primary = unit === "bre" ? m.breName : m.napoName;
-    return normalizeMemberMatchName(primary) === target;
-  });
-  if (match) return match;
-
-  match = members.find(m => {
-    return normalizeMemberMatchName(m.napoName) === target || normalizeMemberMatchName(m.breName) === target;
-  });
-  if (match) return match;
-
-  const targetParts = target.split(" ");
-  const targetShort = targetParts.length > 1 ? targetParts.slice(1).join(" ") : target;
-  if (targetShort.length >= 3) {
-    const partialMatches = members.filter(m => {
-      const n1 = normalizeMemberMatchName(m.napoName);
-      const n2 = normalizeMemberMatchName(m.breName);
-      return n1.endsWith(" " + targetShort) || n2.endsWith(" " + targetShort) || n1 === targetShort || n2 === targetShort;
+  // 1. Exakter Treffer (bevorzugt aktive Mitglieder, falls doppelt)
+  for (const activeOnly of [true, false]) {
+    const match = members.find(m => {
+      if (activeOnly && m.active === false) return false;
+      return getCandidates(m).some(c => normalizeMemberMatchName(c) === target);
     });
-    if (partialMatches.length === 1) return partialMatches[0];
+    if (match) return match;
+  }
+
+  // 2. Treffer nach Entfernen von Rang-/Titel-Präfixen (z. B. "Fähnrich Lorenz" <-> "Lorenz" oder "Gefr. Max" <-> "Soldat Max")
+  const targetNoRank = stripLeadingRankPrefix(target);
+  if (targetNoRank && targetNoRank.length >= 2) {
+    for (const activeOnly of [true, false]) {
+      const noRankMatches = members.filter(m => {
+        if (activeOnly && m.active === false) return false;
+        return getCandidates(m).some(c => {
+          const cNorm = normalizeMemberMatchName(c);
+          const cNoRank = stripLeadingRankPrefix(c);
+          return cNoRank === targetNoRank || cNorm === targetNoRank || cNoRank === target;
+        });
+      });
+      if (noRankMatches.length === 1) return noRankMatches[0];
+    }
+  }
+
+  // 3. Eindeutiger Teil-/Wort-Treffer (z. B. Nachname / Spitzname)
+  const targetParts = targetNoRank.split(" ").filter(Boolean);
+  const targetShort = targetParts.length > 0 ? targetParts[targetParts.length - 1] : targetNoRank;
+  if (targetShort && targetShort.length >= 3) {
+    for (const activeOnly of [true, false]) {
+      const partialMatches = members.filter(m => {
+        if (activeOnly && m.active === false) return false;
+        return getCandidates(m).some(c => {
+          const cNorm = normalizeMemberMatchName(c);
+          const cNoRank = stripLeadingRankPrefix(c);
+          return (
+            cNorm.endsWith(" " + targetShort) ||
+            cNoRank.endsWith(" " + targetShort) ||
+            cNorm === targetShort ||
+            cNoRank === targetShort
+          );
+        });
+      });
+      if (partialMatches.length === 1) return partialMatches[0];
+    }
   }
 
   return null;
