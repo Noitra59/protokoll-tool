@@ -726,7 +726,6 @@
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.5rem;">
         <div id="chart-legend-box" class="chart-legend" style="margin-bottom:0;">
           <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
-          <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
           <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
         </div>
         <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
@@ -1543,7 +1542,7 @@ function onFormatChange(resetFields = true) {
   if (cfg.isTraining) {
     if (grpTroop) grpTroop.style.display = "none";
     if (grpTrainingFields) grpTrainingFields.style.display = "grid";
-    if (lblSummary) lblSummary.textContent = "Übungen und Trainingseinheiten";
+    if (lblSummary) lblSummary.textContent = "Trainingseinheiten";
   } else {
     if (grpTroop) grpTroop.style.display = "block";
     if (grpTrainingFields) grpTrainingFields.style.display = "none";
@@ -2205,7 +2204,7 @@ function generateBBCode() {
   bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
 
   if (cfg.isTraining) {
-    bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
+    bb += `[b]Trainingseinheiten:[/b] ${summary}\n\n`;
   } else {
     bb += `[b]Kurzzusammenfassung des Ereignisses:[/b] ${summary}\n\n`;
   }
@@ -2485,7 +2484,6 @@ function renderStats() {
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
         <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
       `;
     }
@@ -2656,7 +2654,6 @@ function renderStatsChart() {
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Anwesend</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Abgemeldet</div>
         <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div> Fehlend</div>
       `;
     }
@@ -2764,7 +2761,7 @@ function renderStatsChart() {
 
   let maxVal = 5;
   dataPoints.forEach(d => {
-    const m = chartMode === "teamkills" ? d.tk : Math.max(d.pres, d.exc, d.unexc);
+    const m = chartMode === "teamkills" ? d.tk : Math.max(d.pres, d.unexc);
     if (m > maxVal) maxVal = m;
   });
 
@@ -2799,7 +2796,6 @@ function renderStatsChart() {
     ? [{ key: "tk", color: "#a855f7" }]
     : [
         { key: "pres", color: "#10b981" },
-        { key: "exc", color: "#f59e0b" },
         { key: "unexc", color: "#ef4444" }
       ];
 
@@ -3910,7 +3906,7 @@ function rebuildBBCodeForProtocol(proto) {
   bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\\";
 
   if (cfg.isTraining) {
-    bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
+    bb += `[b]Trainingseinheiten:[/b] ${summary}\n\n`;
   } else {
     bb += `[b]Kurzzusammenfassung des Ereignisses:[/b] ${summary}\n\n`;
   }
