@@ -2707,8 +2707,27 @@ function renderStatsChart() {
     eventsByKey[key].tk += sumTK;
   });
 
-  const dataPoints = Object.values(eventsByKey)
-    .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.format || "").localeCompare(b.format || ""))
+  const byDate = {};
+  Object.values(eventsByKey).forEach(item => {
+    const dt = item.date || "";
+    if (!byDate[dt]) {
+      byDate[dt] = {
+        date: dt,
+        pres: item.pres,
+        exc: item.exc,
+        unexc: item.unexc,
+        tk: item.tk
+      };
+    } else {
+      byDate[dt].pres = Math.max(byDate[dt].pres, item.pres);
+      byDate[dt].exc = Math.max(byDate[dt].exc, item.exc);
+      byDate[dt].unexc = Math.max(byDate[dt].unexc, item.unexc);
+      byDate[dt].tk = Math.max(byDate[dt].tk, item.tk);
+    }
+  });
+
+  const dataPoints = Object.values(byDate)
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
     .map(item => ({
       date: formatGermanDate(item.date),
       pres: item.pres,
@@ -3239,9 +3258,8 @@ function generateBriefingReport() {
   const includeManualNapo = (filter === "all" || filter === "napo_all" || (tpls[filter] && tpls[filter].unit === "napo"));
   const includeManualBre = (filter === "all" || filter === "bre_all" || (tpls[filter] && tpls[filter].unit === "bre"));
 
- if (appData.manualAttendance && !dateFrom && !dateTo) {
+  if (appData.manualAttendance && !dateFrom && !dateTo) {
     const yearsToProcess = yearFilter === "all"
-      ? Object.keys(appData.manualAttendance || {})
       : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
     yearsToProcess.forEach(yr => {
