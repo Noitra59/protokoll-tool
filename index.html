@@ -2280,7 +2280,7 @@ function buildBBCodeFromData(dataObj) {
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n`;
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
 
   if (cfg.isTraining) {
     bb += `[b]Trainingseinheiten:[/b] ${summary}\n\n`;
