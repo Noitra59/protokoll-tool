@@ -2609,13 +2609,14 @@ function renderStatsChart() {
 
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 600;
-  const cssWidth = rect.width > 10 ? rect.width : Math.max(300, parentWidth);
-  const cssHeight = rect.height > 10 ? rect.height : 200;
+  const cssWidth = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 600);
+  const cssHeight = rect.height > 0 ? rect.height : 200;
+  if (cssWidth <= 0 || cssHeight <= 0) return;
 
-  canvas.width = Math.max(1, Math.round(cssWidth * dpr));
-  canvas.height = Math.max(1, Math.round(cssHeight * dpr));
+  canvas.width = Math.round(cssWidth * dpr);
+  canvas.height = Math.round(cssHeight * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
   ctx.clearRect(0, 0, cssWidth, cssHeight);
 
   const chartModeEl = document.getElementById("stats-chart-mode");
@@ -2628,9 +2629,9 @@ function renderStatsChart() {
       legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
     } else {
       legendBox.innerHTML = `
-        <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Anwesend</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Abgemeldet</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div> Fehlend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
       `;
     }
   }
@@ -2639,7 +2640,7 @@ function renderStatsChart() {
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const dateFromEl = document.getElementById("stats-date-from");
   const dateToEl = document.getElementById("stats-date-to");
-
+  
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
   const dateFrom = dateFromEl ? dateFromEl.value : "";
@@ -2650,18 +2651,15 @@ function renderStatsChart() {
 
   (appData.protocols || []).forEach(p => {
     const cfg = tpls[p.format];
-    // Falls Template nicht in tpls gefunden wurde, pruefen ob Format bereits direkt als Unit/Name passt
-    const isNapo = cfg ? (cfg.unit === "napo") : (p.format && !p.format.includes("bre"));
-    if (!isNapo) return;
+    if (!cfg || cfg.unit !== "napo") return;
     if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
-    const key = `${p.date || ""}_${p.format || ""}`;
+    const key = `${p.date}_${p.format}`;
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: p.date || "", format: p.format || "", pres: 0, exc: 0, unexc: 0, tk: 0 };
+      eventsByKey[key] = { date: p.date, format: p.format, pres: 0, exc: 0, unexc: 0, tk: 0 };
     }
     if (p.attendance) {
       Object.values(p.attendance).forEach(a => {
-        if (!a) return;
         if (a.status === "present") eventsByKey[key].pres++;
         else if (a.status === "excused") eventsByKey[key].exc++;
         else eventsByKey[key].unexc++;
@@ -2671,25 +2669,22 @@ function renderStatsChart() {
 
   (appData.teamkillLogs || []).forEach(t => {
     const cfg = tpls[t.format];
-    const isNapo = cfg ? (cfg.unit === "napo") : (t.format && !t.format.includes("bre"));
-    if (!isNapo) return;
+    if (!cfg || cfg.unit !== "napo") return;
     if (!matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo)) return;
 
-    const key = `${t.date || ""}_${t.format || ""}`;
+    const key = `${t.date}_${t.format}`;
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: t.date || "", format: t.format || "", pres: 0, exc: 0, unexc: 0, tk: 0 };
+      eventsByKey[key] = { date: t.date, format: t.format, pres: 0, exc: 0, unexc: 0, tk: 0 };
     }
     let sumTK = 0;
     if (t.records) {
-      Object.values(t.records).forEach(r => {
-        if (r) sumTK += (parseInt(r.count, 10) || 0);
-      });
+      Object.values(t.records).forEach(r => sumTK += (parseInt(r.count) || 0));
     }
     eventsByKey[key].tk += sumTK;
   });
 
   const dataPoints = Object.values(eventsByKey)
-    .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.format || "").localeCompare(b.format || ""))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.format.localeCompare(b.format))
     .map(item => ({
       date: formatGermanDate(item.date),
       pres: item.pres,
@@ -2712,14 +2707,14 @@ function renderStatsChart() {
     if (m > maxVal) maxVal = m;
   });
 
-  const paddingLeft = 38;
+  const paddingLeft = 35;
   const paddingRight = 20;
   const paddingTop = 20;
   const paddingBottom = 30;
-  const chartWidth = Math.max(50, cssWidth - paddingLeft - paddingRight);
-  const chartHeight = Math.max(40, cssHeight - paddingTop - paddingBottom);
+  const chartWidth = cssWidth - paddingLeft - paddingRight;
+  const chartHeight = cssHeight - paddingTop - paddingBottom;
 
-  ctx.strokeStyle = "rgba(46, 51, 59, 0.85)";
+  ctx.strokeStyle = "rgba(46, 51, 59, 0.6)";
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = paddingTop + (chartHeight / 4) * i;
@@ -2732,7 +2727,7 @@ function renderStatsChart() {
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(String(valLabel), paddingLeft - 8, y + 3);
+    ctx.fillText(valLabel, paddingLeft - 8, y + 3);
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
@@ -2758,17 +2753,17 @@ function renderStatsChart() {
     }
 
     if (chartType === "bar") {
-      const values = seriesMeta.map(s => ({ val: d[s.key] || 0, color: s.color }));
+      const values = seriesMeta.map(s => ({ val: d[s.key], color: s.color }));
       const totalGroupW = values.length * (barWidth + 2);
-      const startX = groupX - (totalGroupW / 2);
+      let startX = groupX - (totalGroupW / 2);
 
       values.forEach((v, vIdx) => {
-        const h = maxVal > 0 ? (v.val / maxVal) * chartHeight : 0;
+        const h = (v.val / maxVal) * chartHeight;
         const x = startX + vIdx * (barWidth + 2);
         const y = paddingTop + chartHeight - h;
 
         ctx.fillStyle = v.color;
-        ctx.fillRect(x, y, barWidth, Math.max(0, h));
+        ctx.fillRect(x, y, barWidth, h);
       });
     }
   });
@@ -2780,8 +2775,7 @@ function renderStatsChart() {
       ctx.beginPath();
       dataPoints.forEach((d, idx) => {
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-        const val = d[s.key] || 0;
-        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
+        const h = (d[s.key] / maxVal) * chartHeight;
         const y = paddingTop + chartHeight - h;
         if (idx === 0) ctx.moveTo(groupX, y);
         else ctx.lineTo(groupX, y);
@@ -2790,8 +2784,7 @@ function renderStatsChart() {
 
       dataPoints.forEach((d, idx) => {
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-        const val = d[s.key] || 0;
-        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
+        const h = (d[s.key] / maxVal) * chartHeight;
         const y = paddingTop + chartHeight - h;
         ctx.fillStyle = s.color;
         ctx.beginPath();
@@ -3814,18 +3807,6 @@ function renderMemberEventHistory() {
     `;
     tbody.appendChild(tr);
   });
-}
-
-
-if (typeof ResizeObserver !== "undefined") {
-  const statsRo = new ResizeObserver(() => {
-    const statsTab = document.getElementById("tab-stats");
-    if (statsTab && statsTab.classList.contains("active")) {
-      renderStatsChart();
-    }
-  });
-  const chartElForRo = document.getElementById("attendance-chart");
-  if (chartElForRo) statsRo.observe(chartElForRo);
 }
 
 window.addEventListener("resize", () => {
