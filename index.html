@@ -3768,6 +3768,7 @@ function onTkHistoryDetailsToggle(detailsEl) {
 
 let parsedImportRaw = null;
 let parsedImportReady = null;
+let manualImportOverrides = {};
 
 function onImportDetailsToggle(detailsEl) {
   const toggleText = document.getElementById("import-summary-toggle-text");
@@ -3788,6 +3789,7 @@ function normalizeMemberMatchName(str) {
     .replace(/[“”„‟«»]/g, '"')
     .replace(/[‘’‚‛]/g, "'")
     .replace(/[–—−‐‑]/g, "-")
+    .replace(/[\[\](){}]/g, " ")
     .replace(/\s+/g, " ")
     .toLowerCase()
     .trim();
@@ -4035,7 +4037,7 @@ function refreshImportPreviewMapping() {
         attendanceMap[m.id] = { status: status, note: entry.note || "" };
       } else {
         const statusLabel = status === "present" ? "Anwesend" : (status === "excused" ? "Abgemeldet" : "Unentschuldigt");
-        unmatched.push({ name: entry.name, note: entry.note, statusLabel });
+        unmatched.push({ name: entry.name, note: entry.note, status, statusLabel });
       }
     });
   });
@@ -4067,11 +4069,60 @@ function refreshImportPreviewMapping() {
   const unmatchedList = document.getElementById("imp-list-unmatched");
   if (unmatched.length > 0) {
     unmatchedBox.style.display = "block";
-    unmatchedList.innerHTML = unmatched.map(u => `<div>• <strong>${u.name}</strong> (${u.statusLabel}${u.note ? `, ${u.note}` : ""})</div>`).join("");
+    const allMembers = Array.isArray(appData.members) ? appData.members : [];
+    const memberOpts = allMembers.map(m => {
+      const lbl = (unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName)) || m.id;
+      return `<option value="${m.id}">${lbl}${m.active === false ? " (Archiviert)" : ""}</option>`;
+    }).join("");
+
+    unmatchedList.innerHTML = unmatched.map((u, idx) => {
+      const key = `${u.status}::${u.name}::${idx}`;
+      const selectedId = manualImportOverrides[key] || "";
+      return `<div style="display:flex; justify-content:space-between; align-items:center; gap:0.5rem; flex-wrap:wrap; padding:0.25rem 0; border-bottom:1px dashed rgba(239,68,68,0.2);">
+        <span>• <strong>${u.name}</strong> (${u.statusLabel}${u.note ? `, ${u.note}` : ""})</span>
+        <select onchange="onManualUnmatchedAssign('${encodeURIComponent(key)}', '${u.status}', '${encodeURIComponent(u.name)}', '${encodeURIComponent(u.note || "")}', this.value)" style="width:auto; min-width:200px; padding:0.25rem 0.45rem; font-size:0.8rem;">
+          <option value="">-- Mitglied manuell zuordnen --</option>
+          ${memberOpts}
+        </select>
+      </div>`;
+    }).join("");
+
+    // Restore selected values & apply manual overrides into parsedImportReady
+    const selects = unmatchedList.querySelectorAll("select");
+    unmatched.forEach((u, idx) => {
+      const key = `${u.status}::${u.name}::${idx}`;
+      const selId = manualImportOverrides[key] || "";
+      if (selects[idx]) selects[idx].value = selId;
+      if (selId) {
+        const m = allMembers.find(x => x.id === selId);
+        if (m) {
+          const displayName = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+          matched[u.status].push({ member: m, displayName, note: u.note });
+          parsedImportReady.attendance[m.id] = { status: u.status, note: u.note || "" };
+          parsedImportReady.matchedCounts[u.status] = matched[u.status].length;
+        }
+      }
+    });
+    document.getElementById("imp-count-present").textContent = matched.present.length;
+    document.getElementById("imp-count-excused").textContent = matched.excused.length;
+    document.getElementById("imp-count-unexcused").textContent = matched.unexcused.length;
+    document.getElementById("imp-list-present").innerHTML = renderListHtml(matched.present);
+    document.getElementById("imp-list-excused").innerHTML = renderListHtml(matched.excused);
+    document.getElementById("imp-list-unexcused").innerHTML = renderListHtml(matched.unexcused);
   } else {
     unmatchedBox.style.display = "none";
     unmatchedList.innerHTML = "";
   }
+function onManualUnmatchedAssign(encodedKey, status, encodedName, encodedNote, memberId) {
+  const key = decodeURIComponent(encodedKey);
+  if (memberId) {
+    manualImportOverrides[key] = memberId;
+  } else {
+    delete manualImportOverrides[key];
+  }
+  refreshImportPreviewMapping();
+}
+
 }
 
 async function confirmBBCodeImport() {
@@ -4129,6 +4180,7 @@ async function confirmBBCodeImport() {
 function clearBBCodeImport() {
   parsedImportRaw = null;
   parsedImportReady = null;
+  manualImportOverrides = {};
   const inp = document.getElementById("import-bbcode-input");
   const box = document.getElementById("import-preview-box");
   if (inp) inp.value = "";
