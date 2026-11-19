@@ -121,7 +121,6 @@
   .btn-secondary:hover { background: #323741; }
   .btn-sm { padding: 0.35rem 0.7rem; font-size: 0.8rem; }
 
-  /* Editor Modus Banner */
   .mode-indicator {
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius);
@@ -135,7 +134,6 @@
   .mode-indicator.new { background: rgba(59, 130, 246, 0.15); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
   .mode-indicator.edit { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
 
-  /* Anwesenheitsliste */
   .attendance-row {
     display: grid;
     grid-template-columns: 2fr 2.2fr 1.5fr;
@@ -147,7 +145,6 @@
   .attendance-row:last-child { border-bottom: none; }
   .attendance-row:hover { background: var(--surface-hover); }
 
-  /* Teamkill-Liste */
   .tk-row {
     display: grid;
     grid-template-columns: 3fr 1fr;
@@ -181,7 +178,6 @@
   .radio-pill input[value="excused"]:checked + span { background: rgba(245, 158, 11, 0.2); border-color: var(--warning); color: var(--warning); }
   .radio-pill input[value="unexcused"]:checked + span { background: rgba(239, 68, 68, 0.2); border-color: var(--danger); color: var(--danger); }
 
-  /* Perfekt ausgerichtete Rekord-Boxen */
   .record-box-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; align-items: stretch; }
   @media (max-width: 900px) { .record-box-grid { grid-template-columns: 1fr; } }
   .record-box {
@@ -238,7 +234,6 @@
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0; }
   .record-details { font-size: 0.82rem; color: var(--text); }
 
-  /* Chart Container */
   .chart-container {
     background: var(--bg);
     border: 1px solid var(--border);
@@ -260,7 +255,6 @@
   .legend-item { display: flex; align-items: center; gap: 0.35rem; }
   .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
 
-  /* BBCode Preview Box */
   .preview-box {
     background: #fff;
     color: #111;
@@ -280,7 +274,6 @@
     resize: vertical;
   }
 
-  /* Tabellen */
   table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
   th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
   th { color: var(--text-muted); font-weight: 600; background: rgba(0,0,0,0.2); user-select: none; }
@@ -288,7 +281,6 @@
   th.sortable:hover { color: #fff; background: rgba(255,255,255,0.05); }
   tr:hover td { background: var(--surface-hover); }
 
-  /* Badges */
   .badge {
     display: inline-block;
     padding: 0.2rem 0.5rem;
@@ -341,7 +333,6 @@
 </header>
 
 <main>
-  <!-- TAB 1: EDITOR (PROTOKOLL) -->
   <div id="tab-editor" class="tab-content active">
     <div class="grid-2">
       <div>
@@ -454,9 +445,7 @@
     </div>
   </div>
 
-  <!-- TAB 2: VERLAUF -->
   <div id="tab-history" class="tab-content">
-    <!-- BBCode-Protokoll für Statistik importieren -->
     <details id="bbcode-import-details" class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onImportDetailsToggle(this)">
       <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
         <span>📥 BBCode-Protokoll importieren</span>
@@ -524,7 +513,6 @@
       </div>
     </details>
 
-
     <div class="card">
       <h2>Gespeicherte Protokolle</h2>
       <table>
@@ -543,7 +531,6 @@
     </div>
   </div>
 
-  <!-- TAB 3: TEAMKILLS -->
   <div id="tab-teamkills" class="tab-content">
     <div class="grid-2">
       <div>
@@ -574,7 +561,6 @@
           <div id="tk-member-list"></div>
         </div>
 
-        <!-- MITGLIEDER-TEAMKILL-HISTORIE (UNTER TEAMKILLS ERFASSEN AUF DER LINKEN SEITE) -->
         <div class="card">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">
             <h2 style="border:none; margin:0; padding:0;">Mitglieder-Teamkill-Historie</h2>
@@ -668,7 +654,6 @@
           </table>
         </div>
 
-        <!-- EINGEKLAPPTE GESPEICHERTE TEAMKILL-EINTRÄGE -->
         <details class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onTkHistoryDetailsToggle(this)">
           <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
             <span>📁 Gespeicherte Teamkill-Einträge verwalten</span>
@@ -693,7 +678,6 @@
     </div>
   </div>
 
-  <!-- TAB 4: STATISTIKEN -->
   <div id="tab-stats" class="tab-content">
     <div class="card">
       <div style="display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
@@ -722,7 +706,6 @@
         </div>
       </div>
 
-      <!-- Diagramm -->
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.5rem;">
         <div id="chart-legend-box" class="chart-legend" style="margin-bottom:0;">
           <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
@@ -750,7 +733,6 @@
         <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
       </div>
 
-      <!-- Regiments-Briefing / Report Box (Kompakt im Grid) -->
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
         <div id="briefing-visual-output" style="display: grid; grid-template-columns: 0.8fr 0.9fr 0.9fr 0.9fr 0.8fr 1.7fr; gap: 0.75rem;">
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
@@ -796,7 +778,6 @@
       </table>
     </div>
 
-    <!-- Event-Teilnahmen eines gewählten Mitglieds -->
     <div class="card" style="background: rgba(28, 31, 36, 0.7);">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
         <div>
@@ -839,8 +820,6 @@
     </div>
   </div>
 
-
-  <!-- TAB 5: MITGLIEDERLISTE -->
   <div id="tab-members" class="tab-content">
     <div class="card">
       <h2>Neues Mitglied hinzufügen</h2>
@@ -884,7 +863,7 @@
               <th style="min-width: 100px;">Betroffenes Event</th>
               <th style="min-width: 80px;">Abwesend bis</th>
               <th style="width: 90px;">Status</th>
-              <th style="min-width: 150px;">Aktionen</th>
+              <th style="width: 150px;">Aktionen</th>
             </tr>
           </thead>
           <tbody id="members-table-body"></tbody>
@@ -893,7 +872,6 @@
     </div>
   </div>
 
-  <!-- TAB 6: TEMPLATES -->
   <div id="tab-templates" class="tab-content">
     <div class="card">
       <h2 id="tpl-form-title">Neues Event-Template erstellen</h2>
@@ -990,12 +968,11 @@
     </div>
   </div>
 
-  <!-- TAB 7: BACKUP -->
   <div id="tab-backup" class="tab-content">
     <div class="card">
       <h2>Datensicherung & Export</h2>
       <p style="color:var(--text-muted); margin-bottom:1rem;">
-        Da the Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
+        Da die Daten zentral in Google Sheets gespeichert werden, läuft alles automatisch. Hier kannst du zusätzlich ein lokales Backup herunterladen.
       </p>
       <div style="display:flex; gap:1rem; flex-wrap:wrap;">
         <button class="btn" onclick="exportBackup()">⬇️ Backup herunterladen (.json)</button>
@@ -1221,7 +1198,7 @@ function switchTab(tabId, btnElement) {
     renderTkRecords();
   }
   if (tabId === "history") renderHistory();
-    if (tabId === "stats") {
+  if (tabId === "stats") {
     updateStatsYearDropdown();
     updateMemberEventHistoryDropdowns();
     renderStats();
@@ -1373,7 +1350,6 @@ function updateStatsYearDropdown() {
     }
   });
 
-
   const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
 
   const selectors = [
@@ -1481,12 +1457,10 @@ function isMemberDefaultExcused(member, fmtKey) {
 
   const rawEv = (member.permExcusedEvent || "").toString().trim().toLowerCase();
   
-  // Wenn "all" gewählt ist oder kein spezifisches Event (oder "alle events"), gilt es für JEDES Event!
   if (rawEv === "" || rawEv === "all" || rawEv === "alle events") {
     return true;
   }
 
-  // Ansonsten prüfen, ob das gewählte spezifische Event mit dem aktuellen Event (fmtKey oder Event-Name) übereinstimmt
   if (fmtKey) {
     if (rawEv === fmtKey.toLowerCase()) {
       return true;
@@ -1541,7 +1515,6 @@ function onFormatChange(resetFields = true) {
     if (summaryEl) summaryEl.value = "";
   }
 
-  // Nur bei neuem Protokoll (resetFields === true) die Anwesenheit frisch initialisieren
   if (resetFields) {
     currentAttendance = {};
     const unit = cfg.unit;
@@ -2176,7 +2149,7 @@ function generateBBCode() {
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n";
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n`;
 
   if (cfg.isTraining) {
     bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
@@ -2492,6 +2465,7 @@ function renderStats() {
 
     if (appData.manualAttendance && !dateFrom && !dateTo) {
       const yearsToProcess = yearFilter === "all"
+        ? Object.keys(appData.manualAttendance)
         : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
       yearsToProcess.forEach(yr => {
@@ -3215,6 +3189,7 @@ function generateBriefingReport() {
 
   if (appData.manualAttendance && !dateFrom && !dateTo) {
     const yearsToProcess = yearFilter === "all"
+      ? Object.keys(appData.manualAttendance)
       : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
     yearsToProcess.forEach(yr => {
@@ -3317,7 +3292,6 @@ function generateBriefingReport() {
   if (statTopCountEl) statTopCountEl.textContent = topMemberCountText;
 }
 
-
 function updateTkMemberHistoryDropdown() {
   const select = document.getElementById("tk-member-history-select");
   if (!select) return;
@@ -3387,7 +3361,6 @@ function renderMemberTkHistory() {
   }
 }
 
-
 function onTkHistoryDetailsToggle(detailsEl) {
   const toggleText = document.getElementById("tk-history-summary-toggle-text");
   if (!toggleText) return;
@@ -3397,7 +3370,6 @@ function onTkHistoryDetailsToggle(detailsEl) {
     toggleText.textContent = "Klicken zum Aufklappen";
   }
 }
-
 
 let parsedImportRaw = null;
 let parsedImportReady = null;
@@ -3441,7 +3413,6 @@ function parseBBCodeProtocolText(rawBB) {
   const lines = (rawBB || "").split(/\r?\n/);
   const cleanLines = lines.map(l => stripBBCodeTags(l));
 
-  // 1. Datum aus erster nicht-leerer Zeile oder Titel suchen (TT.MM.JJJJ)
   let isoDate = "";
   for (let i = 0; i < Math.min(cleanLines.length, 6); i++) {
     const m = cleanLines[i].match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
@@ -3454,7 +3425,6 @@ function parseBBCodeProtocolText(rawBB) {
     }
   }
 
-  // 2. Template / Event-Format erkennen
   const tpls = getTemplates();
   let detectedFormat = Object.keys(tpls)[0] || "tue_hli";
   const headerText = cleanLines.slice(0, 5).join(" ").toLowerCase();
@@ -3476,7 +3446,6 @@ function parseBBCodeProtocolText(rawBB) {
     }
   }
 
-  // 3. Abschnitte auslesen
   let section = null;
   const rawEntries = {
     present: [],
@@ -3534,20 +3503,17 @@ function findMatchingMember(rawName, unit) {
 
   const members = appData.members || [];
 
-  // 1. Exakter Treffer in der bevorzugten Einheit
   let match = members.find(m => {
     const primary = unit === "bre" ? m.breName : m.napoName;
     return normalizeMemberMatchName(primary) === target;
   });
   if (match) return match;
 
-  // 2. Exakter Treffer in der anderen Einheit (falls Rang/Name dort steht)
   match = members.find(m => {
     return normalizeMemberMatchName(m.napoName) === target || normalizeMemberMatchName(m.breName) === target;
   });
   if (match) return match;
 
-  // 3. Treffer ohne Rang (letztes Wort / Namensbestandteil nach Leerzeichen)
   const targetParts = target.split(" ");
   const targetShort = targetParts.length > 1 ? targetParts.slice(1).join(" ") : target;
   if (targetShort.length >= 3) {
@@ -3815,7 +3781,6 @@ window.addEventListener("resize", () => {
     renderStatsChart();
   }
 });
-
 </script>
 </body>
 </html>
