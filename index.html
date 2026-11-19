@@ -815,20 +815,27 @@
         <div>
           <h2 style="margin:0;">📋 Event-Teilnahmen nach Mitglied</h2>
           <p style="font-size:0.85rem; color:var(--text-muted); margin:0.25rem 0 0 0;">
-            Zeigt die Events und den Anwesenheitsstatus des ausgewählten Mitglieds – optional gefiltert nach Event.
+            Zeigt die letzten 50 Events (pro Seite) und den Anwesenheitsstatus des ausgewählten Mitglieds – optional gefiltert nach Event.
           </p>
         </div>
         <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
           <div style="display:flex; gap:0.35rem; align-items:center;">
             <label for="stats-member-events-select" style="margin:0;">Mitglied:</label>
-            <select id="stats-member-events-select" onchange="renderMemberEventHistory()" style="width:auto; min-width:200px; padding:0.35rem 0.5rem;">
+            <select id="stats-member-events-select" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:200px; padding:0.35rem 0.5rem;">
               <option value="">-- Mitglied wählen --</option>
             </select>
           </div>
           <div style="display:flex; gap:0.35rem; align-items:center;">
             <label for="stats-member-events-filter" style="margin:0;">Event:</label>
-            <select id="stats-member-events-filter" onchange="renderMemberEventHistory()" style="width:auto; min-width:190px; padding:0.35rem 0.5rem;">
+            <select id="stats-member-events-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:190px; padding:0.35rem 0.5rem;">
               <option value="all">Alle Events</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.4rem; align-items:center;">
+            <span id="stats-member-events-page-info" style="font-size:0.85rem; color:var(--text-muted);"></span>
+            <label for="stats-member-events-page-select" style="margin:0; font-size:0.85rem;">Seite:</label>
+            <select id="stats-member-events-page-select" onchange="onMemberEventHistoryPageChange()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
+              <option value="1">Seite 1</option>
             </select>
           </div>
         </div>
@@ -3990,16 +3997,39 @@ function updateMemberEventHistoryDropdowns() {
   }
 }
 
+const MEMBER_EVENTS_PAGE_SIZE = 50;
+let currentMemberEventsPage = 1;
+
+function onMemberEventFilterOrSelectChange() {
+  currentMemberEventsPage = 1;
+  renderMemberEventHistory();
+}
+
+function onMemberEventHistoryPageChange() {
+  const select = document.getElementById("stats-member-events-page-select");
+  if (select) {
+    currentMemberEventsPage = parseInt(select.value, 10) || 1;
+  }
+  renderMemberEventHistory();
+}
+
 function renderMemberEventHistory() {
   const memberSelect = document.getElementById("stats-member-events-select");
   const eventSelect = document.getElementById("stats-member-events-filter");
   const tbody = document.getElementById("stats-member-events-body");
+  const pageSelect = document.getElementById("stats-member-events-page-select");
+  const pageInfo = document.getElementById("stats-member-events-page-info");
   if (!memberSelect || !eventSelect || !tbody) return;
 
   const memberId = memberSelect.value;
   const eventFilter = eventSelect.value || "all";
 
   if (!memberId) {
+    if (pageInfo) pageInfo.textContent = "0 Einträge";
+    if (pageSelect) {
+      pageSelect.innerHTML = `<option value="1">Seite 1</option>`;
+      pageSelect.value = "1";
+    }
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>`;
     return;
   }
@@ -4021,13 +4051,38 @@ function renderMemberEventHistory() {
     })
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
+  const totalCount = rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / MEMBER_EVENTS_PAGE_SIZE));
+  if (currentMemberEventsPage > totalPages) currentMemberEventsPage = totalPages;
+  if (currentMemberEventsPage < 1) currentMemberEventsPage = 1;
+
+  if (pageSelect) {
+    pageSelect.innerHTML = "";
+    for (let i = 1; i <= totalPages; i++) {
+      const opt = document.createElement("option");
+      opt.value = String(i);
+      const startNum = (i - 1) * MEMBER_EVENTS_PAGE_SIZE + 1;
+      const endNum = Math.min(i * MEMBER_EVENTS_PAGE_SIZE, totalCount);
+      opt.textContent = totalCount > 0 ? `Seite ${i} (${startNum}–${endNum})` : `Seite 1`;
+      pageSelect.appendChild(opt);
+    }
+    pageSelect.value = String(currentMemberEventsPage);
+  }
+
   if (rows.length === 0) {
+    if (pageInfo) pageInfo.textContent = "0 Einträge";
     tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
     return;
   }
 
+  const startIndex = (currentMemberEventsPage - 1) * MEMBER_EVENTS_PAGE_SIZE;
+  const pageRows = rows.slice(startIndex, startIndex + MEMBER_EVENTS_PAGE_SIZE);
+  if (pageInfo) {
+    pageInfo.textContent = `Zeige ${startIndex + 1}–${startIndex + pageRows.length} von ${totalCount}`;
+  }
+
   tbody.innerHTML = "";
-  rows.forEach(p => {
+  pageRows.forEach(p => {
     const entry = p.attendance[memberId] || {};
     const cfg = tpls[p.format];
     const eventName = cfg ? cfg.name : p.format;
