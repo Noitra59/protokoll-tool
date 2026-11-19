@@ -456,6 +456,75 @@
 
   <!-- TAB 2: VERLAUF -->
   <div id="tab-history" class="tab-content">
+    <!-- BBCode-Protokoll für Statistik importieren -->
+    <details id="bbcode-import-details" class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onImportDetailsToggle(this)">
+      <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
+        <span>📥 BBCode-Protokoll importieren (Anwesenheit für Statistik)</span>
+        <span id="import-summary-toggle-text" style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
+      </summary>
+      
+      <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1rem;">
+          Füge hier den BBCode eines fertigen Protokolls ein. Datum, Event-Format sowie Anwesende, Abgemeldete und Fehlende werden ausgelesen und vor dem Speichern zur Kontrolle angezeigt.
+        </p>
+
+        <div class="form-group">
+          <label>BBCode-Protokoll einfügen:</label>
+          <textarea id="import-bbcode-input" rows="7" class="bbcode-raw" style="height:170px;" placeholder="[color=#BF4000][size=150][b]k.k. Protokoll des ... am TT.MM.JJJJ:[/b][/size][/color]..."></textarea>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+          <button class="btn" onclick="previewBBCodeImport()">🔍 Vorschau prüfen</button>
+          <button class="btn btn-secondary" onclick="clearBBCodeImport()">Leeren</button>
+        </div>
+
+        <div id="import-preview-box" style="display:none; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem;">
+          <h3 style="font-size:1rem; margin-bottom:0.75rem; color:var(--primary);">📋 Import-Überblick & Kontrolle</h3>
+          
+          <div id="import-duplicate-warning" style="display:none; background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.4); color: #fbbf24; padding: 0.6rem 0.85rem; border-radius: var(--radius); font-size: 0.85rem; margin-bottom: 1rem;">
+            ⚠️ Hinweis: Für dieses Datum und Event-Format existiert bereits ein Protokoll. Beim Import wird ein zusätzlicher Eintrag gespeichert (oder du kannst das bestehende Protokoll im Verlauf bearbeiten).
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Erkanntes Event-Format (bei Bedarf anpassen):</label>
+              <select id="import-preview-format" onchange="refreshImportPreviewMapping()"></select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Erkanntes Datum (bei Bedarf anpassen):</label>
+              <input type="date" id="import-preview-date" onchange="checkImportDuplicateWarning()">
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:0.75rem; margin-bottom:1rem;">
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem;">
+              <div style="font-weight:700; color:var(--success); margin-bottom:0.4rem; font-size:0.85rem;">✅ Anwesend (<span id="imp-count-present">0</span>)</div>
+              <div id="imp-list-present" style="font-size:0.82rem; line-height:1.5;"></div>
+            </div>
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem;">
+              <div style="font-weight:700; color:var(--warning); margin-bottom:0.4rem; font-size:0.85rem;">🟡 Abgemeldet (<span id="imp-count-excused">0</span>)</div>
+              <div id="imp-list-excused" style="font-size:0.82rem; line-height:1.5;"></div>
+            </div>
+            <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:0.75rem;">
+              <div style="font-weight:700; color:var(--danger); margin-bottom:0.4rem; font-size:0.85rem;">❌ Unentschuldigt (<span id="imp-count-unexcused">0</span>)</div>
+              <div id="imp-list-unexcused" style="font-size:0.82rem; line-height:1.5;"></div>
+            </div>
+          </div>
+
+          <div id="imp-unmatched-box" style="display:none; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: var(--radius); padding: 0.75rem; margin-bottom: 1rem;">
+            <div style="font-weight:700; color:#f87171; font-size:0.85rem; margin-bottom:0.35rem;">⚠️ Nicht zugeordnete Namen (werden nicht in die Statistik übernommen):</div>
+            <div id="imp-list-unmatched" style="font-size:0.82rem; color:var(--text);"></div>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+            <button class="btn btn-secondary btn-sm" onclick="clearBBCodeImport()">Abbrechen</button>
+            <button class="btn btn-success btn-sm" onclick="confirmBBCodeImport()">☁️ Import bestätigen & in Statistik speichern</button>
+          </div>
+        </div>
+      </div>
+    </details>
+
+
     <div class="card">
       <h2>Gespeicherte Protokolle</h2>
       <table>
@@ -756,6 +825,7 @@
       </div>
     </details>
   </div>
+
 
   <!-- TAB 5: MITGLIEDERLISTE -->
   <div id="tab-members" class="tab-content">
@@ -1163,6 +1233,19 @@ function updateFormatDropdown() {
   
   if (tpls[currentVal]) {
     select.value = currentVal;
+  }
+
+  const impSelect = document.getElementById("import-preview-format");
+  if (impSelect) {
+    const impCur = impSelect.value;
+    impSelect.innerHTML = "";
+    for (const [key, cfg] of Object.entries(tpls)) {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = cfg.name;
+      impSelect.appendChild(opt);
+    }
+    if (tpls[impCur]) impSelect.value = impCur;
   }
 }
 
@@ -3326,6 +3409,325 @@ function onTkHistoryDetailsToggle(detailsEl) {
   } else {
     toggleText.textContent = "Klicken zum Aufklappen";
   }
+}
+
+
+let parsedImportRaw = null;
+let parsedImportReady = null;
+
+function onImportDetailsToggle(detailsEl) {
+  const toggleText = document.getElementById("import-summary-toggle-text");
+  if (!toggleText) return;
+  toggleText.textContent = detailsEl.open ? "Klicken zum Einklappen" : "Klicken zum Aufklappen";
+}
+
+function stripBBCodeTags(str) {
+  return (str || "")
+    .replace(/\[\/?[a-zA-Z0-9]+(?:=[^\]]*)?\]/g, "")
+    .trim();
+}
+
+function normalizeMemberMatchName(str) {
+  return (str || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractNameAndNote(line) {
+  const clean = stripBBCodeTags(line).trim();
+  if (!clean || clean === "/" || clean === "-/-" || clean === "-") return null;
+  if (/^in summe\s*:/i.test(clean)) return null;
+
+  let namePart = clean;
+  let notePart = "";
+  const noteMatch = clean.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  if (noteMatch) {
+    namePart = noteMatch[1].trim();
+    notePart = noteMatch[2].trim();
+  }
+  if (!namePart || namePart === "/") return null;
+  return { name: namePart, note: notePart };
+}
+
+function parseBBCodeProtocolText(rawBB) {
+  const lines = (rawBB || "").split(/\r?\n/);
+  const cleanLines = lines.map(l => stripBBCodeTags(l));
+
+  // 1. Datum aus erster nicht-leerer Zeile oder Titel suchen (TT.MM.JJJJ)
+  let isoDate = "";
+  for (let i = 0; i < Math.min(cleanLines.length, 6); i++) {
+    const m = cleanLines[i].match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+    if (m) {
+      const dd = m[1].padStart(2, "0");
+      const mm = m[2].padStart(2, "0");
+      const yyyy = m[3];
+      isoDate = `${yyyy}-${mm}-${dd}`;
+      break;
+    }
+  }
+
+  // 2. Template / Event-Format erkennen
+  const tpls = getTemplates();
+  let detectedFormat = Object.keys(tpls)[0] || "tue_hli";
+  const headerText = cleanLines.slice(0, 5).join(" ").toLowerCase();
+
+  let bestScore = 0;
+  for (const [key, cfg] of Object.entries(tpls)) {
+    let score = 0;
+    const prefixClean = (cfg.titlePrefix || "").toLowerCase().trim();
+    if (prefixClean && headerText.includes(prefixClean)) {
+      score += 10;
+    }
+    const nameWords = (cfg.name || "").toLowerCase().split(/[^a-z0-9äöüß]+/).filter(w => w.length > 2);
+    nameWords.forEach(w => {
+      if (headerText.includes(w)) score += 2;
+    });
+    if (score > bestScore) {
+      bestScore = score;
+      detectedFormat = key;
+    }
+  }
+
+  // 3. Abschnitte auslesen
+  let section = null;
+  const rawEntries = {
+    present: [],
+    excused: [],
+    unexcused: []
+  };
+
+  for (let i = 0; i < cleanLines.length; i++) {
+    const cl = cleanLines[i].trim();
+    if (!cl) continue;
+
+    if (/^anwesende mitspieler\s*:?/i.test(cl)) {
+      section = "present";
+      continue;
+    }
+    if (/^entsatzspieler/i.test(cl)) {
+      section = null;
+      continue;
+    }
+    if (/^abgemeldete mitspieler\s*:?/i.test(cl)) {
+      section = "excused";
+      continue;
+    }
+    if (/^fehlende(?: nicht abgemeldete)? mitspieler\s*:?/i.test(cl)) {
+      section = "unexcused";
+      continue;
+    }
+    if (/^(kurzzusammenfassung|übungen und trainingseinheiten|positiv hervorzuheben|negativ hervorzuheben|anmerkungen)\s*:?/i.test(cl)) {
+      section = null;
+      continue;
+    }
+    if (/^in summe\s*:/i.test(cl)) {
+      continue;
+    }
+
+    if (section) {
+      const parsed = extractNameAndNote(cl);
+      if (parsed) {
+        rawEntries[section].push(parsed);
+      }
+    }
+  }
+
+  return {
+    isoDate,
+    detectedFormat,
+    rawEntries,
+    rawBB
+  };
+}
+
+function findMatchingMember(rawName, unit) {
+  const target = normalizeMemberMatchName(rawName);
+  if (!target) return null;
+
+  const members = appData.members || [];
+
+  // 1. Exakter Treffer in der bevorzugten Einheit
+  let match = members.find(m => {
+    const primary = unit === "bre" ? m.breName : m.napoName;
+    return normalizeMemberMatchName(primary) === target;
+  });
+  if (match) return match;
+
+  // 2. Exakter Treffer in der anderen Einheit (falls Rang/Name dort steht)
+  match = members.find(m => {
+    return normalizeMemberMatchName(m.napoName) === target || normalizeMemberMatchName(m.breName) === target;
+  });
+  if (match) return match;
+
+  // 3. Treffer ohne Rang (letztes Wort / Namensbestandteil nach Leerzeichen)
+  const targetParts = target.split(" ");
+  const targetShort = targetParts.length > 1 ? targetParts.slice(1).join(" ") : target;
+  if (targetShort.length >= 3) {
+    const partialMatches = members.filter(m => {
+      const n1 = normalizeMemberMatchName(m.napoName);
+      const n2 = normalizeMemberMatchName(m.breName);
+      return n1.endsWith(" " + targetShort) || n2.endsWith(" " + targetShort) || n1 === targetShort || n2 === targetShort;
+    });
+    if (partialMatches.length === 1) return partialMatches[0];
+  }
+
+  return null;
+}
+
+function previewBBCodeImport() {
+  const rawBB = document.getElementById("import-bbcode-input").value.trim();
+  if (!rawBB) {
+    alert("Bitte zuerst einen BBCode-Text einfügen.");
+    return;
+  }
+
+  parsedImportRaw = parseBBCodeProtocolText(rawBB);
+  updateFormatDropdown();
+
+  const fmtSelect = document.getElementById("import-preview-format");
+  const dateInput = document.getElementById("import-preview-date");
+
+  if (fmtSelect && parsedImportRaw.detectedFormat) {
+    fmtSelect.value = parsedImportRaw.detectedFormat;
+  }
+  if (dateInput) {
+    dateInput.value = parsedImportRaw.isoDate || new Date().toISOString().split("T")[0];
+  }
+
+  document.getElementById("import-preview-box").style.display = "block";
+  refreshImportPreviewMapping();
+}
+
+function checkImportDuplicateWarning() {
+  const warnEl = document.getElementById("import-duplicate-warning");
+  if (!warnEl) return;
+  const fmt = document.getElementById("import-preview-format").value;
+  const dt = document.getElementById("import-preview-date").value;
+  const exists = (appData.protocols || []).some(p => p.format === fmt && p.date === dt);
+  warnEl.style.display = exists ? "block" : "none";
+}
+
+function refreshImportPreviewMapping() {
+  if (!parsedImportRaw) return;
+  checkImportDuplicateWarning();
+
+  const fmtKey = document.getElementById("import-preview-format").value;
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey] || Object.values(tpls)[0];
+  const unit = cfg ? cfg.unit : "napo";
+
+  const matched = { present: [], excused: [], unexcused: [] };
+  const unmatched = [];
+  const attendanceMap = {};
+
+  ["present", "excused", "unexcused"].forEach(status => {
+    (parsedImportRaw.rawEntries[status] || []).forEach(entry => {
+      const m = findMatchingMember(entry.name, unit);
+      if (m) {
+        const displayName = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+        matched[status].push({ member: m, displayName, note: entry.note });
+        attendanceMap[m.id] = { status: status, note: entry.note || "" };
+      } else {
+        const statusLabel = status === "present" ? "Anwesend" : (status === "excused" ? "Abgemeldet" : "Unentschuldigt");
+        unmatched.push({ name: entry.name, note: entry.note, statusLabel });
+      }
+    });
+  });
+
+  parsedImportReady = {
+    attendance: attendanceMap,
+    matchedCounts: {
+      present: matched.present.length,
+      excused: matched.excused.length,
+      unexcused: matched.unexcused.length
+    },
+    unmatchedCount: unmatched.length
+  };
+
+  document.getElementById("imp-count-present").textContent = matched.present.length;
+  document.getElementById("imp-count-excused").textContent = matched.excused.length;
+  document.getElementById("imp-count-unexcused").textContent = matched.unexcused.length;
+
+  const renderListHtml = (arr) => {
+    if (arr.length === 0) return `<span style="color:var(--text-muted);">Keine</span>`;
+    return arr.map(item => `<div>• ${item.displayName}${item.note ? ` <span style="color:var(--text-muted);">(${item.note})</span>` : ""}</div>`).join("");
+  };
+
+  document.getElementById("imp-list-present").innerHTML = renderListHtml(matched.present);
+  document.getElementById("imp-list-excused").innerHTML = renderListHtml(matched.excused);
+  document.getElementById("imp-list-unexcused").innerHTML = renderListHtml(matched.unexcused);
+
+  const unmatchedBox = document.getElementById("imp-unmatched-box");
+  const unmatchedList = document.getElementById("imp-list-unmatched");
+  if (unmatched.length > 0) {
+    unmatchedBox.style.display = "block";
+    unmatchedList.innerHTML = unmatched.map(u => `<div>• <strong>${u.name}</strong> (${u.statusLabel}${u.note ? `, ${u.note}` : ""})</div>`).join("");
+  } else {
+    unmatchedBox.style.display = "none";
+    unmatchedList.innerHTML = "";
+  }
+}
+
+async function confirmBBCodeImport() {
+  if (!parsedImportRaw || !parsedImportReady) return;
+
+  const fmtKey = document.getElementById("import-preview-format").value;
+  const isoDate = document.getElementById("import-preview-date").value;
+
+  if (!fmtKey || !isoDate) {
+    alert("Bitte Event-Format und Datum angeben.");
+    return;
+  }
+
+  const totalMatched = parsedImportReady.matchedCounts.present + parsedImportReady.matchedCounts.excused + parsedImportReady.matchedCounts.unexcused;
+  if (totalMatched === 0) {
+    alert("Es wurden keine gültigen Mitglieder-Einträge erkannt. Import abgebrochen.");
+    return;
+  }
+
+  const tpls = getTemplates();
+  const cfg = tpls[fmtKey] || {};
+
+  const protocolObj = {
+    id: "proto_" + Date.now(),
+    format: fmtKey,
+    date: isoDate,
+    leader: cfg.defaultLeader || "/",
+    subleader: "/",
+    scribe: cfg.defaultScribe || "/",
+    troop: cfg.defaultTroop || "",
+    promotions: "/",
+    awards: "/",
+    mercs: "/",
+    summary: "(Importiertes Protokoll)",
+    pos: "-/-",
+    neg: "-/-",
+    notes: "-/-",
+    attendance: parsedImportReady.attendance,
+    bbcode: parsedImportRaw.rawBB
+  };
+
+  if (!appData.protocols) appData.protocols = [];
+  appData.protocols.unshift(protocolObj);
+  appData.protocols.sort((a, b) => b.date.localeCompare(a.date));
+
+  await saveToCloud();
+  updateStatsYearDropdown();
+  renderHistory();
+  renderStats();
+  renderStatsChart();
+  clearBBCodeImport();
+  showToast(`Protokoll (${totalMatched} Spieler) importiert & Statistik aktualisiert!`);
+}
+
+function clearBBCodeImport() {
+  parsedImportRaw = null;
+  parsedImportReady = null;
+  const inp = document.getElementById("import-bbcode-input");
+  const box = document.getElementById("import-preview-box");
+  if (inp) inp.value = "";
+  if (box) box.style.display = "none";
 }
 
 initEditor();
