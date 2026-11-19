@@ -459,7 +459,7 @@
     <!-- BBCode-Protokoll für Statistik importieren -->
     <details id="bbcode-import-details" class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onImportDetailsToggle(this)">
       <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
-        <span>📥 BBCode-Protokoll importieren (Anwesenheit für Statistik)</span>
+        <span>📥 BBCode-Protokoll importieren</span>
         <span id="import-summary-toggle-text" style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
       </summary>
       
@@ -723,11 +723,19 @@
       </div>
 
       <!-- Diagramm -->
-      <div class="chart-legend">
-        <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; margin-bottom:0.5rem;">
+        <div id="chart-legend-box" class="chart-legend" style="margin-bottom:0;">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
+        </div>
+        <div style="display:flex; gap:0.4rem; align-items:center;">
+          <label style="margin:0; font-size:0.8rem;">Diagramm-Ansicht:</label>
+          <select id="stats-chart-mode" onchange="renderStatsChart()" style="width:auto; padding:0.25rem 0.5rem; font-size:0.82rem;">
+            <option value="activity" selected>Aktivität</option>
+            <option value="teamkills">Teamkills</option>
+          </select>
+        </div>
       </div>
       <div class="chart-container">
         <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
@@ -1505,13 +1513,15 @@ function onFormatChange(resetFields = true) {
     if (summaryEl) summaryEl.value = "";
   }
 
-  // Bei jedem Formatwechsel die Anwesenheit für das neue Format frisch initialisieren
-  currentAttendance = {};
-  const unit = cfg.unit;
-  (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
-    let initialStatus = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
-    currentAttendance[m.id] = { status: initialStatus, note: "" };
-  });
+  // Nur bei neuem Protokoll (resetFields === true) die Anwesenheit frisch initialisieren
+  if (resetFields) {
+    currentAttendance = {};
+    const unit = cfg.unit;
+    (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo)).forEach(m => {
+      let initialStatus = isMemberDefaultExcused(m, fmtKey) ? "excused" : "unexcused";
+      currentAttendance[m.id] = { status: initialStatus, note: "" };
+    });
+  }
 
   renderAttendanceList();
   updateOutput();
@@ -2426,6 +2436,21 @@ function renderStats() {
     }
   });
 
+  const chartModeEl = document.getElementById("stats-chart-mode");
+  const chartMode = chartModeEl ? chartModeEl.value : "activity";
+  const legendBox = document.getElementById("chart-legend-box");
+  if (legendBox) {
+    if (chartMode === "teamkills") {
+      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
+    } else {
+      legendBox.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
+      `;
+    }
+  }
+
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
   const dateFrom = dateFromEl ? dateFromEl.value : "";
@@ -2643,7 +2668,7 @@ function renderStatsChart() {
 
   let maxVal = 5;
   dataPoints.forEach(d => {
-    const m = Math.max(d.pres, d.exc, d.unexc, d.tk);
+    const m = chartMode === "teamkills" ? d.tk : Math.max(d.pres, d.exc, d.unexc);
     if (m > maxVal) maxVal = m;
   });
 
@@ -2671,7 +2696,8 @@ function renderStatsChart() {
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
-  const barWidth = Math.max(2, Math.min(6, (barGroupWidth / 5) - 1));
+  const divisor = chartMode === "teamkills" ? 2.2 : 4;
+  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 14 : 7, (barGroupWidth / divisor) - 1));
 
   dataPoints.forEach((d, idx) => {
     const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
@@ -2683,12 +2709,13 @@ function renderStatsChart() {
       ctx.fillText(d.date.substring(0, 5), groupX, rect.height - 10);
     }
 
-    const values = [
-      { val: d.pres, color: "#10b981" },
-      { val: d.exc, color: "#f59e0b" },
-      { val: d.unexc, color: "#ef4444" },
-      { val: d.tk, color: "#a855f7" }
-    ];
+    const values = chartMode === "teamkills"
+      ? [{ val: d.tk, color: "#a855f7" }]
+      : [
+          { val: d.pres, color: "#10b981" },
+          { val: d.exc, color: "#f59e0b" },
+          { val: d.unexc, color: "#ef4444" }
+        ];
 
     const totalGroupW = values.length * (barWidth + 2);
     let startX = groupX - (totalGroupW / 2);
