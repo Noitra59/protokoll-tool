@@ -751,7 +751,7 @@
 
       <!-- Regiments-Briefing / Report Box (Kompakt im Grid) -->
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
-        <div id="briefing-visual-output" style="display: grid; grid-template-columns: 0.8fr 0.9fr 0.9fr 0.9fr 0.8fr 1.7fr; gap: 0.75rem;">
+        <div id="briefing-visual-output" style="display: grid; grid-template-columns: 0.7fr 0.8fr 0.8fr 0.8fr 0.7fr 1.35fr 1.35fr; gap: 0.65rem;">
           <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
             <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Events</div>
             <div id="briefing-stat-events" style="font-size: 1.2rem; font-weight: 800; color: var(--primary);">0</div>
@@ -776,6 +776,11 @@
             <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Aktivster Soldat</div>
             <div id="briefing-stat-top" style="font-size: 0.85rem; font-weight: 700; color: var(--warning); line-height: 1.2;" title="Keine Daten">Keine</div>
             <div id="briefing-stat-top-count" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem;">0 Event(s)</div>
+          </div>
+          <div style="background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.75rem; text-align: center;">
+            <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; margin-bottom: 0.2rem;">Höchste Spielerzahl</div>
+            <div id="briefing-stat-max-count" style="font-size: 1.1rem; font-weight: 800; color: var(--success); line-height: 1.2;">0</div>
+            <div id="briefing-stat-max-event" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; line-height: 1.2;" title="Keine Daten">Keine Daten</div>
           </div>
         </div>
       </div>
@@ -3250,12 +3255,16 @@ function generateBriefingReport() {
   let totalUnexcusedSum = 0;
   let totalTeamkillsSum = 0;
   let memberPresenceCounts = {};
+  let maxEventPlayers = -1;
+  let topPlayerEvents = [];
 
   filteredProtocols.forEach(p => {
+    let protoPresentCount = 0;
     if (p.attendance) {
       Object.entries(p.attendance).forEach(([mId, a]) => {
         if (a.status === "present") {
           totalPresenceSum++;
+          protoPresentCount++;
           memberPresenceCounts[mId] = (memberPresenceCounts[mId] || 0) + 1;
         } else if (a.status === "excused") {
           totalExcusedSum++;
@@ -3263,6 +3272,12 @@ function generateBriefingReport() {
           totalUnexcusedSum++;
         }
       });
+    }
+    if (protoPresentCount > maxEventPlayers) {
+      maxEventPlayers = protoPresentCount;
+      topPlayerEvents = [p];
+    } else if (protoPresentCount === maxEventPlayers && protoPresentCount >= 0) {
+      topPlayerEvents.push(p);
     }
   });
 
@@ -3362,6 +3377,21 @@ function generateBriefingReport() {
     topMemberCountText = `${maxCount} Event(s)`;
   }
 
+  let maxCountValText = "0";
+  let maxEventLabelHtml = "Keine Daten";
+  let maxEventTitleText = "Keine Daten";
+
+  if (topPlayerEvents.length > 0 && maxEventPlayers >= 0 && filteredProtocols.length > 0) {
+    maxCountValText = `${maxEventPlayers} Spieler`;
+    const eventLabels = topPlayerEvents.map(ev => {
+      const cfg = tpls[ev.format];
+      const evName = cfg ? cfg.name : (ev.format || "Event");
+      return `${evName} (${formatGermanDate(ev.date)})`;
+    });
+    maxEventLabelHtml = eventLabels.join("<br>");
+    maxEventTitleText = eventLabels.join("\n");
+  }
+
   const statEventsEl = document.getElementById("briefing-stat-events");
   const statAvgEl = document.getElementById("briefing-stat-avg");
   const statAvgExcEl = document.getElementById("briefing-stat-avg-exc");
@@ -3369,6 +3399,8 @@ function generateBriefingReport() {
   const statAvgTkEl = document.getElementById("briefing-stat-avg-tk");
   const statTopEl = document.getElementById("briefing-stat-top");
   const statTopCountEl = document.getElementById("briefing-stat-top-count");
+  const statMaxCountEl = document.getElementById("briefing-stat-max-count");
+  const statMaxEventEl = document.getElementById("briefing-stat-max-event");
 
   if (statEventsEl) statEventsEl.textContent = totalEventsCount;
   if (statAvgEl) statAvgEl.textContent = avgAttendance;
@@ -3380,6 +3412,11 @@ function generateBriefingReport() {
     statTopEl.title = topMembers.length > 0 ? topMembers.map(t => t.name).join("\n") : "Keine Daten";
   }
   if (statTopCountEl) statTopCountEl.textContent = topMemberCountText;
+  if (statMaxCountEl) statMaxCountEl.textContent = maxCountValText;
+  if (statMaxEventEl) {
+    statMaxEventEl.innerHTML = maxEventLabelHtml;
+    statMaxEventEl.title = maxEventTitleText;
+  }
 }
 
 
