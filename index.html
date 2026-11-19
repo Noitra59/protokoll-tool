@@ -3888,11 +3888,11 @@ function rebuildBBCodeForProtocol(proto) {
   bb += `${mercs}\n\n`;
 
   bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\";
+  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\\";
   bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
 
   bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
-  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\";
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\\";
 
   if (cfg.isTraining) {
     bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
