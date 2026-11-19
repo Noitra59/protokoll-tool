@@ -1242,7 +1242,6 @@ function initEditor() {
   const tkDateEl = document.getElementById("tk-date");
   if (dateEl) dateEl.value = today;
   if (tkDateEl) tkDateEl.value = today;
-  if (manualYearEl) manualYearEl.value = new Date().getFullYear();
 
   const day = new Date().getDay();
   let defaultKey = "tue_hli";
@@ -1373,10 +1372,7 @@ function updateStatsYearDropdown() {
       if (year) years.add(year);
     }
   });
-  if (appData.manualAttendance) {
-      if (y) years.add(y);
-    });
-  }
+
 
   const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
 
@@ -2381,10 +2377,6 @@ function getManualUnitData(yearObj, unit) {
 }
 
 function onStatsYearFilterChange() {
-  const yearFilter = document.getElementById("stats-year-filter").value;
-  if (manualYearInput && yearFilter !== "all") {
-    manualYearInput.value = yearFilter;
-  }
   renderStats();
   renderStatsChart();
 }
@@ -2617,8 +2609,8 @@ function renderStatsChart() {
 
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  const cssWidth = cssWidth > 0 ? cssWidth : (canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 600);
-  const cssHeight = cssHeight > 0 ? cssHeight : 200;
+  const cssWidth = rect.width > 0 ? rect.width : (canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 600);
+  const cssHeight = rect.height > 0 ? rect.height : 200;
   if (cssWidth <= 0 || cssHeight <= 0) return;
 
   canvas.width = Math.round(cssWidth * dpr);
