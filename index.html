@@ -784,7 +784,7 @@
       <table>
         <thead>
           <tr>
-            <th class="sortable" onclick="sortStatsTable('name')">Mitglied (Nr59) <span id="sort-ind-stats-name"></span></th>
+            <th class="sortable" onclick="sortStatsTable('name')">Mitglied <span id="sort-ind-stats-name"></span></th>
             <th class="sortable" onclick="sortStatsTable('unit')">Einheit <span id="sort-ind-stats-unit"></span></th>
             <th class="sortable" style="color:var(--success);" onclick="sortStatsTable('pres')">Anwesend <span id="sort-ind-stats-pres"></span></th>
             <th class="sortable" style="color:var(--warning);" onclick="sortStatsTable('exc')">Abgemeldet <span id="sort-ind-stats-exc"></span></th>
@@ -2677,14 +2677,15 @@ function renderStatsChart() {
 
   (appData.protocols || []).forEach(p => {
     const cfg = tpls[p.format];
-    // Falls Template nicht in tpls gefunden wurde, pruefen ob Format bereits direkt als Unit/Name passt
     const isNapo = cfg ? (cfg.unit === "napo") : (p.format && !p.format.includes("bre"));
     if (!isNapo) return;
     if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${p.date || ""}_${p.format || ""}`;
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: p.date || "", format: p.format || "", pres: 0, exc: 0, unexc: 0, tk: 0 };
+      eventsByKey[key] = { date: p.date || "", format: p.format || "", pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: true, hasTk: false };
+    } else {
+      eventsByKey[key].hasActivity = true;
     }
     if (p.attendance) {
       Object.values(p.attendance).forEach(a => {
@@ -2704,7 +2705,9 @@ function renderStatsChart() {
 
     const key = `${t.date || ""}_${t.format || ""}`;
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: t.date || "", format: t.format || "", pres: 0, exc: 0, unexc: 0, tk: 0 };
+      eventsByKey[key] = { date: t.date || "", format: t.format || "", pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: false, hasTk: true };
+    } else {
+      eventsByKey[key].hasTk = true;
     }
     let sumTK = 0;
     if (t.records) {
@@ -2724,24 +2727,31 @@ function renderStatsChart() {
         pres: item.pres,
         exc: item.exc,
         unexc: item.unexc,
-        tk: item.tk
+        tk: item.tk,
+        hasActivity: Boolean(item.hasActivity),
+        hasTk: Boolean(item.hasTk)
       };
     } else {
       byDate[dt].pres = Math.max(byDate[dt].pres, item.pres);
       byDate[dt].exc = Math.max(byDate[dt].exc, item.exc);
       byDate[dt].unexc = Math.max(byDate[dt].unexc, item.unexc);
       byDate[dt].tk = Math.max(byDate[dt].tk, item.tk);
+      byDate[dt].hasActivity = byDate[dt].hasActivity || Boolean(item.hasActivity);
+      byDate[dt].hasTk = byDate[dt].hasTk || Boolean(item.hasTk);
     }
   });
 
   const dataPoints = Object.values(byDate)
+    .filter(item => chartMode === "teamkills" ? item.hasTk : item.hasActivity)
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
     .map(item => ({
       date: formatGermanDate(item.date),
       pres: item.pres,
       exc: item.exc,
       unexc: item.unexc,
-      tk: item.tk
+      tk: item.tk,
+      hasActivity: item.hasActivity,
+      hasTk: item.hasTk
     }));
 
   if (dataPoints.length === 0) {
@@ -2821,29 +2831,34 @@ function renderStatsChart() {
 
   if (chartType === "line") {
     seriesMeta.forEach(s => {
-      ctx.strokeStyle = s.color;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
+      const validPoints = [];
       dataPoints.forEach((d, idx) => {
+        const hasEventForSeries = chartMode === "teamkills" ? d.hasTk : d.hasActivity;
+        if (!hasEventForSeries) return;
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
         const val = d[s.key] || 0;
         const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
         const y = paddingTop + chartHeight - h;
-        if (idx === 0) ctx.moveTo(groupX, y);
-        else ctx.lineTo(groupX, y);
+        validPoints.push({ x: groupX, y });
       });
-      ctx.stroke();
 
-      dataPoints.forEach((d, idx) => {
-        const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-        const val = d[s.key] || 0;
-        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
-        const y = paddingTop + chartHeight - h;
-        ctx.fillStyle = s.color;
+      if (validPoints.length > 0) {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
         ctx.beginPath();
-        ctx.arc(groupX, y, 3, 0, Math.PI * 2);
-        ctx.fill();
-      });
+        validPoints.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+
+        validPoints.forEach(pt => {
+          ctx.fillStyle = s.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
     });
   }
 }
