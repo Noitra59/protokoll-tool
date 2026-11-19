@@ -829,10 +829,11 @@
               <th>Event</th>
               <th>Status</th>
               <th>Notiz</th>
+              <th>Aktionen</th>
             </tr>
           </thead>
           <tbody id="stats-member-events-body">
-            <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>
+            <tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>
           </tbody>
         </table>
       </div>
@@ -3810,6 +3811,169 @@ function updateMemberEventHistoryDropdowns() {
   }
 }
 
+function escapeAttr(str) {
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function rebuildBBCodeForProtocol(proto) {
+  const tpls = getTemplates();
+  const cfg = tpls[proto.format] || Object.values(tpls)[0];
+  if (!cfg) return proto.bbcode || "";
+
+  const unit = cfg.unit;
+  const dateStr = formatGermanDate(proto.date);
+  const leader = proto.leader || "/";
+  const subleader = proto.subleader || "/";
+  const scribe = proto.scribe || "/";
+  const troop = proto.troop || "";
+  const promotions = proto.promotions || "/";
+  const awards = proto.awards || "/";
+  const mercs = proto.mercs || "/";
+  const summary = proto.summary || "";
+  const pos = proto.pos || "-/-";
+  const neg = proto.neg || "-/-";
+  const notes = proto.notes || "-/-";
+
+  const presentList = [];
+  const excusedList = [];
+  const unexcusedList = [];
+
+  const relevantMembers = (appData.members || []).filter(m =>
+    m.active &&
+    (unit === "bre" ? m.inBre : m.inNapo) &&
+    proto.attendance &&
+    Object.prototype.hasOwnProperty.call(proto.attendance, m.id)
+  );
+
+  relevantMembers.forEach(m => {
+    const state = proto.attendance[m.id] || { status: "unexcused", note: "" };
+    const name = unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName);
+    let cleanNote = (state.note || "").trim();
+    if (cleanNote) {
+      if (!cleanNote.startsWith("(")) cleanNote = "(" + cleanNote;
+      if (!cleanNote.endsWith(")")) cleanNote = cleanNote + ")";
+    }
+    const fullLine = cleanNote ? `${name} ${cleanNote}` : name;
+
+    if (state.status === "present") presentList.push(fullLine);
+    else if (state.status === "excused") excusedList.push(fullLine);
+    else unexcusedList.push(fullLine);
+  });
+
+  let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]\n\n`;
+  if (cfg.isTraining) {
+    bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
+    bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
+    bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
+    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+  } else {
+    bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
+    if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
+    bb += `[u]Schriftführer:[/u] ${scribe}\n`;
+    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
+  }
+
+  bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
+  bb += (presentList.length ? presentList.join("\n") : "/") + "\n\n";
+  bb += `[b][i]In Summe:[/i][/b] ${presentList.length}\n\n`;
+
+  bb += `[size=90][b][color=#804000]Entsatzspieler des Heeres, Landwehrmänner & Milizen:[/color][/b][/size]\n`;
+  bb += `${mercs}\n\n`;
+
+  bb += `[size=110][b][color=#008080]Abgemeldete Mitspieler:[/color][/size][/b]\n`;
+  bb += (excusedList.length ? excusedList.join("\n") : "/") + "\n\n`;
+  bb += `[b][i]In Summe:[/i][/b] ${excusedList.length}\n\n`;
+
+  bb += `[size=110][b][color=#800040]Fehlende nicht abgemeldete Mitspieler:[/color][/size][/b]\n`;
+  bb += (unexcusedList.length ? unexcusedList.join("\n") : "/") + "\n\n`;
+
+  if (cfg.isTraining) {
+    bb += `[b]Übungen und Trainingseinheiten:[/b] ${summary}\n\n`;
+  } else {
+    bb += `[b]Kurzzusammenfassung des Ereignisses:[/b] ${summary}\n\n`;
+  }
+
+  bb += `[color=#408000]Positiv hervorzuheben[/color]: ${pos}\n`;
+  bb += `[color=#BF0040]Negativ hervorzuheben[/color]: ${neg}\n\n`;
+  bb += `[i]Anmerkungen:[/i] ${notes}`;
+
+  return bb;
+}
+
+async function updateProtocolMemberStatus(protocolId, memberId, newStatus) {
+  const proto = (appData.protocols || []).find(p => p.id === protocolId);
+  if (!proto || !proto.attendance || !proto.attendance[memberId]) return;
+
+  proto.attendance[memberId].status = newStatus;
+  proto.bbcode = rebuildBBCodeForProtocol(proto);
+
+  const editProtoIdEl = document.getElementById("edit-protocol-id");
+  if (editProtoIdEl && editProtoIdEl.value === protocolId) {
+    currentAttendance[memberId] = { ...proto.attendance[memberId] };
+    renderAttendanceList();
+    updateOutput();
+  }
+
+  await saveToCloud();
+  renderStats();
+  renderStatsChart();
+  renderHistory();
+  renderMemberEventHistory();
+  showToast("Status im Protokoll aktualisiert & synchronisiert!");
+}
+
+async function updateProtocolMemberNote(protocolId, memberId, newNote) {
+  const proto = (appData.protocols || []).find(p => p.id === protocolId);
+  if (!proto || !proto.attendance || !proto.attendance[memberId]) return;
+
+  proto.attendance[memberId].note = newNote;
+  proto.bbcode = rebuildBBCodeForProtocol(proto);
+
+  const editProtoIdEl = document.getElementById("edit-protocol-id");
+  if (editProtoIdEl && editProtoIdEl.value === protocolId) {
+    currentAttendance[memberId] = { ...proto.attendance[memberId] };
+    renderAttendanceList();
+    updateOutput();
+  }
+
+  await saveToCloud();
+  renderMemberEventHistory();
+  showToast("Notiz im Protokoll aktualisiert!");
+}
+
+async function removeMemberFromProtocol(protocolId, memberId) {
+  const proto = (appData.protocols || []).find(p => p.id === protocolId);
+  if (!proto || !proto.attendance || !Object.prototype.hasOwnProperty.call(proto.attendance, memberId)) return;
+
+  const memberObj = (appData.members || []).find(m => m.id === memberId);
+  const memberName = memberObj ? (memberObj.napoName || memberObj.breName || "Diese Person") : "Diese Person";
+  const dateLabel = formatGermanDate(proto.date);
+
+  if (!confirm(`'${memberName}' komplett aus dem Protokoll vom ${dateLabel} entfernen?`)) return;
+
+  delete proto.attendance[memberId];
+  proto.bbcode = rebuildBBCodeForProtocol(proto);
+
+  const editProtoIdEl = document.getElementById("edit-protocol-id");
+  if (editProtoIdEl && editProtoIdEl.value === protocolId) {
+    delete currentAttendance[memberId];
+    renderAttendanceList();
+    updateOutput();
+  }
+
+  await saveToCloud();
+  renderStats();
+  renderStatsChart();
+  renderHistory();
+  renderMemberEventHistory();
+  showToast("Person aus Protokoll entfernt & synchronisiert!");
+}
+
 function renderMemberEventHistory() {
   const memberSelect = document.getElementById("stats-member-events-select");
   const eventSelect = document.getElementById("stats-member-events-filter");
@@ -3820,15 +3984,15 @@ function renderMemberEventHistory() {
   const eventFilter = eventSelect.value || "all";
 
   if (!memberId) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>`;
     return;
   }
 
   const tpls = getTemplates();
-  const statusLabels = {
-    present: { text: "Anwesend", color: "var(--success)" },
-    excused: { text: "Abgemeldet", color: "var(--warning)" },
-    unexcused: { text: "Fehlend", color: "var(--danger)" }
+  const statusColors = {
+    present: "var(--success)",
+    excused: "var(--warning)",
+    unexcused: "var(--danger)"
   };
 
   const rows = (appData.protocols || [])
@@ -3839,14 +4003,15 @@ function renderMemberEventHistory() {
     .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   if (rows.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
     return;
   }
 
   tbody.innerHTML = "";
   rows.forEach(p => {
     const entry = p.attendance[memberId] || {};
-    const st = statusLabels[entry.status] || { text: entry.status || "-", color: "var(--text-muted)" };
+    const curStatus = entry.status || "unexcused";
+    const stColor = statusColors[curStatus] || "var(--text-muted)";
     const cfg = tpls[p.format];
     const eventName = cfg ? cfg.name : p.format;
     const note = (entry.note || "").trim();
@@ -3855,8 +4020,19 @@ function renderMemberEventHistory() {
     tr.innerHTML = `
       <td><strong>${formatGermanDate(p.date)}</strong></td>
       <td>${eventName}</td>
-      <td style="color:${st.color}; font-weight:700;">${st.text}</td>
-      <td>${note ? note : '<span style="color:var(--text-muted);">-</span>'}</td>
+      <td>
+        <select onchange="updateProtocolMemberStatus('${p.id}', '${memberId}', this.value)" style="width:auto; padding:0.3rem 0.5rem; font-size:0.85rem; color:${stColor}; font-weight:700;">
+          <option value="present" ${curStatus === "present" ? "selected" : ""}>Anwesend</option>
+          <option value="excused" ${curStatus === "excused" ? "selected" : ""}>Abgemeldet</option>
+          <option value="unexcused" ${curStatus === "unexcused" ? "selected" : ""}>Fehlend</option>
+        </select>
+      </td>
+      <td>
+        <input type="text" value="${escapeAttr(note)}" placeholder="-" onchange="updateProtocolMemberNote('${p.id}', '${memberId}', this.value)" style="padding:0.3rem 0.5rem; font-size:0.85rem; min-width:140px;">
+      </td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="removeMemberFromProtocol('${p.id}', '${memberId}')" title="Komplett aus diesem Protokoll entfernen">🗑️ Rauslöschen</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
