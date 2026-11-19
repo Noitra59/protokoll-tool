@@ -2336,10 +2336,18 @@ async function saveProtocol() {
     attendanceSnapshot[m.id] = currentAttendance[m.id] ? { ...currentAttendance[m.id] } : { status: "unexcused", note: "" };
   });
 
+  const dateInputEl = document.getElementById("proto-date");
+  const rawSaveDate = (dateInputEl ? dateInputEl.value : "").trim();
+  if (!rawSaveDate) {
+    alert("Bitte ein gültiges Datum angeben.");
+    return;
+  }
+  const cleanDate = rawSaveDate.includes("T") ? rawSaveDate.split("T")[0] : rawSaveDate.slice(0, 10);
+
   const protocolObj = {
     id: editId || "proto_" + Date.now(),
     format: fmtKey,
-    date: document.getElementById("proto-date").value,
+    date: cleanDate,
     leader: document.getElementById("proto-leader").value,
     subleader: document.getElementById("proto-subleader") ? document.getElementById("proto-subleader").value : "/",
     scribe: document.getElementById("proto-scribe").value,
@@ -2358,13 +2366,17 @@ async function saveProtocol() {
   if (!appData.protocols) appData.protocols = [];
 
   if (editId) {
-    const idx = appData.protocols.findIndex(p => p.id === editId);
-    if (idx !== -1) appData.protocols[idx] = protocolObj;
+    const idx = appData.protocols.findIndex(p => String(p.id) === String(editId));
+    if (idx !== -1) {
+      appData.protocols[idx] = protocolObj;
+    } else {
+      appData.protocols.unshift(protocolObj);
+    }
   } else {
     appData.protocols.unshift(protocolObj);
   }
 
-  appData.protocols.sort((a, b) => b.date.localeCompare(a.date));
+  appData.protocols.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
   await saveToCloud();
   updateStatsYearDropdown();
@@ -2554,7 +2566,9 @@ function editProtocol(id) {
   const editProtoIdEl = document.getElementById("edit-protocol-id");
   if (editProtoIdEl) editProtoIdEl.value = p.id;
   document.getElementById("proto-format").value = p.format;
-  document.getElementById("proto-date").value = p.date;
+  const rawDate = (p.date || "").toString().trim();
+  const normalizedDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.slice(0, 10);
+  document.getElementById("proto-date").value = normalizedDate;
   document.getElementById("proto-leader").value = p.leader;
   if(document.getElementById("proto-subleader")) document.getElementById("proto-subleader").value = p.subleader || "/";
   document.getElementById("proto-scribe").value = p.scribe;
