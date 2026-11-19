@@ -796,51 +796,47 @@
       </table>
     </div>
 
-    <!-- Jahres-Gesamtaktivität manuell nachtragen -->
-    <details id="manual-att-details" class="card" style="background: rgba(28, 31, 36, 0.7);" ontoggle="onManualDetailsToggle(this)">
-      <summary style="cursor: pointer; font-weight: 700; font-size: 1.1rem; outline: none; display: flex; justify-content: space-between; align-items:center;">
-        <span>📁 Jahres-Gesamtaktivität manuell nachtragen</span>
-        <span id="manual-summary-toggle-text" style="font-size: 0.85rem; color: var(--text-muted); font-weight:normal;">Klicken zum Aufklappen</span>
-      </summary>
-      
-      <div style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;">
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
-          <p style="font-size:0.85rem; color:var(--text-muted); margin:0; max-width: 550px;">
-            Trage für ein Jahr und eine Einheit (Nr59 oder Eichenwacht) die Gesamteventanzahl sowie die einzelnen Teilnahmen nach, damit die Anwesenheitsquote korrekt berechnet wird.
+    <!-- Event-Teilnahmen eines gewählten Mitglieds -->
+    <div class="card" style="background: rgba(28, 31, 36, 0.7);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:1rem;">
+        <div>
+          <h2 style="margin:0;">📋 Event-Teilnahmen nach Mitglied</h2>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0.25rem 0 0 0;">
+            Zeigt alle erfassten Events des ausgewählten Mitglieds – optional gefiltert nach Event.
           </p>
-          <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
-            <div style="display:flex; gap:0.35rem; align-items:center;">
-              <label style="margin:0;">Einheit:</label>
-              <select id="manual-att-unit" onchange="renderManualAttendanceList()" style="width:auto; padding:0.35rem 0.5rem;">
-                <option value="napo">Nr59</option>
-                <option value="bre">Eichenwacht</option>
-              </select>
-            </div>
-            <div style="display:flex; gap:0.35rem; align-items:center;">
-              <label style="margin:0;">Jahr:</label>
-              <input type="number" id="manual-att-year" min="2020" max="2099" value="2026" onchange="renderManualAttendanceList()" style="width:85px; padding:0.35rem 0.5rem;">
-            </div>
-            <div style="display:flex; gap:0.35rem; align-items:center;">
-              <label style="margin:0;" title="Gesamtzahl der in diesem Jahr stattgefundenen Events für diese Einheit">Gesamtevents:</label>
-              <input type="number" id="manual-att-total-events" min="0" value="0" style="width:80px; padding:0.35rem 0.5rem; text-align:center;" placeholder="0">
-            </div>
-            <button class="btn btn-success btn-sm" onclick="saveManualAttendance()">☁️ Jahresaktivität speichern</button>
+        </div>
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <label for="stats-member-events-select" style="margin:0;">Mitglied:</label>
+            <select id="stats-member-events-select" onchange="renderMemberEventHistory()" style="width:auto; min-width:200px; padding:0.35rem 0.5rem;">
+              <option value="">-- Mitglied wählen --</option>
+            </select>
+          </div>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <label for="stats-member-events-filter" style="margin:0;">Event:</label>
+            <select id="stats-member-events-filter" onchange="renderMemberEventHistory()" style="width:auto; min-width:190px; padding:0.35rem 0.5rem;">
+              <option value="all">Alle Events</option>
+            </select>
           </div>
         </div>
+      </div>
 
+      <div style="overflow-x:auto;">
         <table>
           <thead>
             <tr>
-              <th>Mitglied (<span id="manual-att-unit-header">Nr59</span>)</th>
-              <th style="color:var(--success); width: 150px;">Anwesenheiten</th>
-              <th style="color:var(--warning); width: 150px;">Abgemeldet</th>
-              <th style="color:var(--danger); width: 150px;">Unentschuldigt</th>
+              <th>Datum</th>
+              <th>Event</th>
+              <th>Status</th>
+              <th>Notiz</th>
             </tr>
           </thead>
-          <tbody id="manual-att-body"></tbody>
+          <tbody id="stats-member-events-body">
+            <tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>
+          </tbody>
         </table>
       </div>
-    </details>
+    </div>
   </div>
 
 
@@ -1118,7 +1114,6 @@ async function loadFromCloud(manual = false) {
         saveToCloud();
       }
       if (!appData.teamkillLogs) appData.teamkillLogs = [];
-      if (!appData.manualAttendance) appData.manualAttendance = {};
       if (!appData.templates || Object.keys(appData.templates).length === 0) {
         appData.templates = { ...DEFAULT_TEMPLATES };
       }
@@ -1141,7 +1136,6 @@ async function loadFromCloud(manual = false) {
       try { appData = JSON.parse(local); } catch(e){}
     }
     if (!appData.teamkillLogs) appData.teamkillLogs = [];
-    if (!appData.manualAttendance) appData.manualAttendance = {};
     if (!appData.templates || Object.keys(appData.templates).length === 0) {
       appData.templates = { ...DEFAULT_TEMPLATES };
     }
@@ -1168,7 +1162,6 @@ async function loadFromCloud(manual = false) {
   renderMemberTkHistory();
   renderStats();
   renderStatsChart();
-  renderManualAttendanceList();
   updateOutput();
   
   isFirstLoad = false;
@@ -1177,7 +1170,6 @@ async function loadFromCloud(manual = false) {
   if (activeTabEl) {
     const activeTab = activeTabEl.id;
     if (activeTab === "tab-history") renderHistory();
-    if (activeTab === "tab-stats") { renderStats(); renderStatsChart(); renderManualAttendanceList(); }
     if (activeTab === "tab-members") renderMembers();
     if (activeTab === "tab-templates") renderTemplatesTable();
   }
@@ -1229,16 +1221,12 @@ function switchTab(tabId, btnElement) {
     renderTkRecords();
   }
   if (tabId === "history") renderHistory();
-  if (tabId === "stats") {
+    if (tabId === "stats") {
     updateStatsYearDropdown();
-    const yearFilter = document.getElementById("stats-year-filter").value;
-    const manualYearInput = document.getElementById("manual-att-year");
-    if (manualYearInput && yearFilter !== "all") {
-      manualYearInput.value = yearFilter;
-    }
+    updateMemberEventHistoryDropdowns();
     renderStats();
-    renderStatsChart();
-    renderManualAttendanceList();
+    renderMemberEventHistory();
+    requestAnimationFrame(() => renderStatsChart());
   }
   if (tabId === "members") renderMembers();
   if (tabId === "templates") renderTemplatesTable();
@@ -1252,10 +1240,8 @@ function initEditor() {
   const today = new Date().toISOString().split("T")[0];
   const dateEl = document.getElementById("proto-date");
   const tkDateEl = document.getElementById("tk-date");
-  const manualYearEl = document.getElementById("manual-att-year");
   if (dateEl) dateEl.value = today;
   if (tkDateEl) tkDateEl.value = today;
-  if (manualYearEl) manualYearEl.value = new Date().getFullYear();
 
   const day = new Date().getDay();
   let defaultKey = "tue_hli";
@@ -1386,11 +1372,7 @@ function updateStatsYearDropdown() {
       if (year) years.add(year);
     }
   });
-  if (appData.manualAttendance) {
-    Object.keys(appData.manualAttendance).forEach(y => {
-      if (y) years.add(y);
-    });
-  }
+
 
   const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
 
@@ -2394,23 +2376,7 @@ function getManualUnitData(yearObj, unit) {
   return null;
 }
 
-function onManualDetailsToggle(detailsEl) {
-  const toggleText = document.getElementById("manual-summary-toggle-text");
-  if (!toggleText) return;
-  if (detailsEl.open) {
-    toggleText.textContent = "Klicken zum Einklappen";
-  } else {
-    toggleText.textContent = "Klicken zum Aufklappen";
-  }
-}
-
 function onStatsYearFilterChange() {
-  const yearFilter = document.getElementById("stats-year-filter").value;
-  const manualYearInput = document.getElementById("manual-att-year");
-  if (manualYearInput && yearFilter !== "all") {
-    manualYearInput.value = yearFilter;
-    renderManualAttendanceList();
-  }
   renderStats();
   renderStatsChart();
 }
@@ -2526,7 +2492,6 @@ function renderStats() {
 
     if (appData.manualAttendance && !dateFrom && !dateTo) {
       const yearsToProcess = yearFilter === "all"
-        ? Object.keys(appData.manualAttendance)
         : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
       yearsToProcess.forEach(yr => {
@@ -2640,26 +2605,32 @@ function renderStatsChart() {
   const canvas = document.getElementById("attendance-chart");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
-  
+  if (!ctx) return;
+
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
-  canvas.width = rect.width * dpr;
-  canvas.height = rect.height * dpr;
-  ctx.scale(dpr, dpr);
+  const parentWidth = canvas.parentElement ? canvas.parentElement.clientWidth - 32 : 600;
+  const cssWidth = rect.width > 10 ? rect.width : Math.max(300, parentWidth);
+  const cssHeight = rect.height > 10 ? rect.height : 200;
 
-  ctx.clearRect(0, 0, rect.width, rect.height);
+  canvas.width = Math.max(1, Math.round(cssWidth * dpr));
+  canvas.height = Math.max(1, Math.round(cssHeight * dpr));
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, cssWidth, cssHeight);
 
   const chartModeEl = document.getElementById("stats-chart-mode");
   const chartMode = chartModeEl ? chartModeEl.value : "activity";
+  const chartTypeEl = document.getElementById("stats-chart-type");
+  const chartType = chartTypeEl ? chartTypeEl.value : "bar";
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
       legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
     } else {
       legendBox.innerHTML = `
-        <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--warning);"></div> Abgemeldet</div>
-        <div class="legend-item"><div class="legend-dot" style="background:var(--danger);"></div> Fehlend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Anwesend</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> Abgemeldet</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ef4444;"></div> Fehlend</div>
       `;
     }
   }
@@ -2668,7 +2639,7 @@ function renderStatsChart() {
   const statsYearFilterEl = document.getElementById("stats-year-filter");
   const dateFromEl = document.getElementById("stats-date-from");
   const dateToEl = document.getElementById("stats-date-to");
-  
+
   const filter = statsFilterEl ? statsFilterEl.value : "all";
   const yearFilter = statsYearFilterEl ? statsYearFilterEl.value : "all";
   const dateFrom = dateFromEl ? dateFromEl.value : "";
@@ -2679,15 +2650,18 @@ function renderStatsChart() {
 
   (appData.protocols || []).forEach(p => {
     const cfg = tpls[p.format];
-    if (!cfg || cfg.unit !== "napo") return;
+    // Falls Template nicht in tpls gefunden wurde, pruefen ob Format bereits direkt als Unit/Name passt
+    const isNapo = cfg ? (cfg.unit === "napo") : (p.format && !p.format.includes("bre"));
+    if (!isNapo) return;
     if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
-    const key = `${p.date}_${p.format}`;
+    const key = `${p.date || ""}_${p.format || ""}`;
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: p.date, format: p.format, pres: 0, exc: 0, unexc: 0, tk: 0 };
+      eventsByKey[key] = { date: p.date || "", format: p.format || "", pres: 0, exc: 0, unexc: 0, tk: 0 };
     }
     if (p.attendance) {
       Object.values(p.attendance).forEach(a => {
+        if (!a) return;
         if (a.status === "present") eventsByKey[key].pres++;
         else if (a.status === "excused") eventsByKey[key].exc++;
         else eventsByKey[key].unexc++;
@@ -2697,22 +2671,25 @@ function renderStatsChart() {
 
   (appData.teamkillLogs || []).forEach(t => {
     const cfg = tpls[t.format];
-    if (!cfg || cfg.unit !== "napo") return;
+    const isNapo = cfg ? (cfg.unit === "napo") : (t.format && !t.format.includes("bre"));
+    if (!isNapo) return;
     if (!matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo)) return;
 
-    const key = `${t.date}_${t.format}`;
+    const key = `${t.date || ""}_${t.format || ""}`;
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: t.date, format: t.format, pres: 0, exc: 0, unexc: 0, tk: 0 };
+      eventsByKey[key] = { date: t.date || "", format: t.format || "", pres: 0, exc: 0, unexc: 0, tk: 0 };
     }
     let sumTK = 0;
     if (t.records) {
-      Object.values(t.records).forEach(r => sumTK += (parseInt(r.count) || 0));
+      Object.values(t.records).forEach(r => {
+        if (r) sumTK += (parseInt(r.count, 10) || 0);
+      });
     }
     eventsByKey[key].tk += sumTK;
   });
 
   const dataPoints = Object.values(eventsByKey)
-    .sort((a, b) => a.date.localeCompare(b.date) || a.format.localeCompare(b.format))
+    .sort((a, b) => (a.date || "").localeCompare(b.date || "") || (a.format || "").localeCompare(b.format || ""))
     .map(item => ({
       date: formatGermanDate(item.date),
       pres: item.pres,
@@ -2725,7 +2702,7 @@ function renderStatsChart() {
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Keine Nr59-Daten im gewählten Zeitraum vorhanden", rect.width / 2, rect.height / 2);
+    ctx.fillText("Keine Nr59-Daten im gewählten Zeitraum vorhanden", cssWidth / 2, cssHeight / 2);
     return;
   }
 
@@ -2735,27 +2712,27 @@ function renderStatsChart() {
     if (m > maxVal) maxVal = m;
   });
 
-  const paddingLeft = 35;
+  const paddingLeft = 38;
   const paddingRight = 20;
   const paddingTop = 20;
   const paddingBottom = 30;
-  const chartWidth = rect.width - paddingLeft - paddingRight;
-  const chartHeight = rect.height - paddingTop - paddingBottom;
+  const chartWidth = Math.max(50, cssWidth - paddingLeft - paddingRight);
+  const chartHeight = Math.max(40, cssHeight - paddingTop - paddingBottom);
 
-  ctx.strokeStyle = "rgba(46, 51, 59, 0.6)";
+  ctx.strokeStyle = "rgba(46, 51, 59, 0.85)";
   ctx.lineWidth = 1;
   for (let i = 0; i <= 4; i++) {
     const y = paddingTop + (chartHeight / 4) * i;
     ctx.beginPath();
     ctx.moveTo(paddingLeft, y);
-    ctx.lineTo(rect.width - paddingRight, y);
+    ctx.lineTo(cssWidth - paddingRight, y);
     ctx.stroke();
 
     const valLabel = Math.round(maxVal - (maxVal / 4) * i);
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "right";
-    ctx.fillText(valLabel, paddingLeft - 8, y + 3);
+    ctx.fillText(String(valLabel), paddingLeft - 8, y + 3);
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
@@ -2777,21 +2754,21 @@ function renderStatsChart() {
       ctx.fillStyle = "#9ba1a6";
       ctx.font = "9px sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText(d.date.substring(0, 5), groupX, rect.height - 10);
+      ctx.fillText(d.date.substring(0, 5), groupX, cssHeight - 10);
     }
 
     if (chartType === "bar") {
-      const values = seriesMeta.map(s => ({ val: d[s.key], color: s.color }));
+      const values = seriesMeta.map(s => ({ val: d[s.key] || 0, color: s.color }));
       const totalGroupW = values.length * (barWidth + 2);
-      let startX = groupX - (totalGroupW / 2);
+      const startX = groupX - (totalGroupW / 2);
 
       values.forEach((v, vIdx) => {
-        const h = (v.val / maxVal) * chartHeight;
+        const h = maxVal > 0 ? (v.val / maxVal) * chartHeight : 0;
         const x = startX + vIdx * (barWidth + 2);
         const y = paddingTop + chartHeight - h;
 
         ctx.fillStyle = v.color;
-        ctx.fillRect(x, y, barWidth, h);
+        ctx.fillRect(x, y, barWidth, Math.max(0, h));
       });
     }
   });
@@ -2803,7 +2780,8 @@ function renderStatsChart() {
       ctx.beginPath();
       dataPoints.forEach((d, idx) => {
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-        const h = (d[s.key] / maxVal) * chartHeight;
+        const val = d[s.key] || 0;
+        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
         const y = paddingTop + chartHeight - h;
         if (idx === 0) ctx.moveTo(groupX, y);
         else ctx.lineTo(groupX, y);
@@ -2812,7 +2790,8 @@ function renderStatsChart() {
 
       dataPoints.forEach((d, idx) => {
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-        const h = (d[s.key] / maxVal) * chartHeight;
+        const val = d[s.key] || 0;
+        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
         const y = paddingTop + chartHeight - h;
         ctx.fillStyle = s.color;
         ctx.beginPath();
@@ -2821,118 +2800,6 @@ function renderStatsChart() {
       });
     });
   }
-}
-
-function renderManualAttendanceList() {
-  const tbody = document.getElementById("manual-att-body");
-  const yearInput = document.getElementById("manual-att-year");
-  const unitSelect = document.getElementById("manual-att-unit");
-  const totalEventsInput = document.getElementById("manual-att-total-events");
-  const unitHeader = document.getElementById("manual-att-unit-header");
-  if (!tbody || !yearInput || !unitSelect) return;
-
-  const year = yearInput.value.trim() || String(new Date().getFullYear());
-  const unit = unitSelect.value || "napo";
-
-  if (unitHeader) {
-    unitHeader.textContent = unit === "bre" ? "Eichenwacht" : "Nr59";
-  }
-
-  tbody.innerHTML = "";
-
-  const yearObj = (appData.manualAttendance && appData.manualAttendance[year]) ? appData.manualAttendance[year] : null;
-  const unitData = getManualUnitData(yearObj, unit);
-  const membersData = (unitData && unitData.members) ? unitData.members : {};
-
-  if (totalEventsInput) {
-    totalEventsInput.value = (unitData && unitData.totalEvents) ? unitData.totalEvents : 0;
-  }
-
-  const relevantMembers = (appData.members || []).filter(m => m.active && (unit === "bre" ? m.inBre : m.inNapo));
-
-  relevantMembers.forEach(m => {
-    const mData = membersData[m.id] || { present: 0, excused: 0, unexcused: 0 };
-    const displayName = unit === "bre" ? (m.breName || m.napoName || "") : (m.napoName || m.breName || "");
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><strong>${displayName}</strong></td>
-      <td>
-        <input type="number" min="0" data-member="${m.id}" data-field="present" value="${mData.present || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
-      </td>
-      <td>
-        <input type="number" min="0" data-member="${m.id}" data-field="excused" value="${mData.excused || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
-      </td>
-      <td>
-        <input type="number" min="0" data-member="${m.id}" data-field="unexcused" value="${mData.unexcused || 0}" style="padding:0.35rem 0.5rem; font-size:0.85rem; text-align:center;">
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-async function saveManualAttendance() {
-  const yearInput = document.getElementById("manual-att-year");
-  const unitSelect = document.getElementById("manual-att-unit");
-  const totalEventsInput = document.getElementById("manual-att-total-events");
-  const tbody = document.getElementById("manual-att-body");
-  if (!yearInput || !unitSelect || !tbody) return;
-
-  const year = yearInput.value.trim();
-  const unit = unitSelect.value || "napo";
-  const totalEvents = totalEventsInput ? (parseInt(totalEventsInput.value) || 0) : 0;
-
-  if (!year || year.length !== 4) {
-    alert("Bitte ein gültiges 4-stelliges Jahr eingeben (z.B. 2026).");
-    return;
-  }
-
-  if (!appData.manualAttendance) appData.manualAttendance = {};
-  if (!appData.manualAttendance[year]) appData.manualAttendance[year] = {};
-
-  if (!appData.manualAttendance[year].napo && !appData.manualAttendance[year].bre && Object.keys(appData.manualAttendance[year]).length > 0) {
-    const legacyMembers = { ...appData.manualAttendance[year] };
-    appData.manualAttendance[year] = {
-      napo: { totalEvents: 0, members: legacyMembers }
-    };
-  }
-
-  appData.manualAttendance[year][unit] = {
-    totalEvents: totalEvents,
-    members: {}
-  };
-
-  const inputs = tbody.querySelectorAll("input[data-member]");
-  inputs.forEach(inp => {
-    const mId = inp.getAttribute("data-member");
-    const field = inp.getAttribute("data-field");
-    const val = parseInt(inp.value) || 0;
-
-    if (!appData.manualAttendance[year][unit].members[mId]) {
-      appData.manualAttendance[year][unit].members[mId] = { present: 0, excused: 0, unexcused: 0 };
-    }
-    appData.manualAttendance[year][unit].members[mId][field] = val;
-  });
-
-  for (const [mId, counts] of Object.entries(appData.manualAttendance[year][unit].members)) {
-    if (counts.present === 0 && counts.excused === 0 && counts.unexcused === 0) {
-      delete appData.manualAttendance[year][unit].members[mId];
-    }
-  }
-
-  if (totalEvents === 0 && Object.keys(appData.manualAttendance[year][unit].members).length === 0) {
-    delete appData.manualAttendance[year][unit];
-  }
-
-  if (Object.keys(appData.manualAttendance[year]).length === 0) {
-    delete appData.manualAttendance[year];
-  }
-
-  await saveToCloud();
-  updateStatsYearDropdown();
-  renderStats();
-  renderTkStats();
-  const unitLabel = unit === "bre" ? "Eichenwacht" : "Nr59";
-  showToast(`Jahresaktivität (${unitLabel}) für ${year} gespeichert & synchronisiert!`);
 }
 
 function renderMembers() {
@@ -2997,7 +2864,6 @@ async function moveMember(index, direction) {
   renderTkStats();
   renderStats();
   renderStatsChart();
-  renderManualAttendanceList();
   updateOutput();
   await saveToCloud();
   showToast("Reihenfolge aktualisiert & synchronisiert.");
@@ -3035,7 +2901,6 @@ async function addMember() {
   renderAttendanceList();
   renderTkList();
   renderTkStats();
-  renderManualAttendanceList();
   updateOutput();
   await saveToCloud();
   showToast("Mitglied hinzugefügt & synchronisiert!");
@@ -3072,7 +2937,6 @@ async function updateMember(id, field, value) {
     renderAttendanceList();
     renderTkList();
     renderTkStats();
-    renderManualAttendanceList();
     updateOutput();
     await saveToCloud();
     showToast("Mitglied aktualisiert.");
@@ -3087,7 +2951,6 @@ async function toggleMemberActive(id) {
     renderAttendanceList();
     renderTkList();
     renderTkStats();
-    renderManualAttendanceList();
     updateOutput();
     await saveToCloud();
   }
@@ -3107,7 +2970,6 @@ async function deleteMember(id) {
   renderTkStats();
   renderStats();
   renderStatsChart();
-  renderManualAttendanceList();
   updateOutput();
   await saveToCloud();
   showToast("Mitglied gelöscht & synchronisiert.");
@@ -3360,7 +3222,6 @@ function generateBriefingReport() {
 
   if (appData.manualAttendance && !dateFrom && !dateTo) {
     const yearsToProcess = yearFilter === "all"
-      ? Object.keys(appData.manualAttendance)
       : (appData.manualAttendance[yearFilter] ? [yearFilter] : []);
 
     yearsToProcess.forEach(yr => {
@@ -3863,8 +3724,117 @@ function clearBBCodeImport() {
   if (box) box.style.display = "none";
 }
 
+updateMemberEventHistoryDropdowns();
+renderMemberEventHistory();
 initEditor();
 loadFromCloud();
+
+function updateMemberEventHistoryDropdowns() {
+  const memberSelect = document.getElementById("stats-member-events-select");
+  const eventSelect = document.getElementById("stats-member-events-filter");
+
+  if (memberSelect) {
+    const prevMember = memberSelect.value;
+    memberSelect.innerHTML = `<option value="">-- Mitglied wählen --</option>`;
+    (appData.members || []).forEach(m => {
+      const label = m.napoName || m.breName || m.id;
+      const opt = document.createElement("option");
+      opt.value = m.id;
+      opt.textContent = label + (m.active ? "" : " (Archiviert)");
+      memberSelect.appendChild(opt);
+    });
+    if (prevMember && memberSelect.querySelector(`option[value="${prevMember}"]`)) {
+      memberSelect.value = prevMember;
+    }
+  }
+
+  if (eventSelect) {
+    const prevEvent = eventSelect.value;
+    const tpls = getTemplates();
+    eventSelect.innerHTML = `<option value="all">Alle Events</option>`;
+    for (const [key, cfg] of Object.entries(tpls)) {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = cfg.name || key;
+      eventSelect.appendChild(opt);
+    }
+    if (prevEvent && eventSelect.querySelector(`option[value="${prevEvent}"]`)) {
+      eventSelect.value = prevEvent;
+    }
+  }
+}
+
+function renderMemberEventHistory() {
+  const memberSelect = document.getElementById("stats-member-events-select");
+  const eventSelect = document.getElementById("stats-member-events-filter");
+  const tbody = document.getElementById("stats-member-events-body");
+  if (!memberSelect || !eventSelect || !tbody) return;
+
+  const memberId = memberSelect.value;
+  const eventFilter = eventSelect.value || "all";
+
+  if (!memberId) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Bitte ein Mitglied auswählen.</td></tr>`;
+    return;
+  }
+
+  const tpls = getTemplates();
+  const statusLabels = {
+    present: { text: "Anwesend", color: "var(--success)" },
+    excused: { text: "Abgemeldet", color: "var(--warning)" },
+    unexcused: { text: "Fehlend", color: "var(--danger)" }
+  };
+
+  const rows = (appData.protocols || [])
+    .filter(p => {
+      if (eventFilter !== "all" && p.format !== eventFilter) return false;
+      return Boolean(p.attendance && Object.prototype.hasOwnProperty.call(p.attendance, memberId));
+    })
+    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--text-muted);">Keine Events für diese Auswahl gefunden.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = "";
+  rows.forEach(p => {
+    const entry = p.attendance[memberId] || {};
+    const st = statusLabels[entry.status] || { text: entry.status || "-", color: "var(--text-muted)" };
+    const cfg = tpls[p.format];
+    const eventName = cfg ? cfg.name : p.format;
+    const note = (entry.note || "").trim();
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${formatGermanDate(p.date)}</strong></td>
+      <td>${eventName}</td>
+      <td style="color:${st.color}; font-weight:700;">${st.text}</td>
+      <td>${note ? note : '<span style="color:var(--text-muted);">-</span>'}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+
+if (typeof ResizeObserver !== "undefined") {
+  const statsRo = new ResizeObserver(() => {
+    const statsTab = document.getElementById("tab-stats");
+    if (statsTab && statsTab.classList.contains("active")) {
+      renderStatsChart();
+    }
+  });
+  const chartElForRo = document.getElementById("attendance-chart");
+  if (chartElForRo) statsRo.observe(chartElForRo);
+}
+
+window.addEventListener("resize", () => {
+  const statsTab = document.getElementById("tab-stats");
+  if (statsTab && statsTab.classList.contains("active")) {
+    renderStatsChart();
+  }
+});
+
 </script>
 </body>
 </html>
