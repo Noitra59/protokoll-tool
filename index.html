@@ -438,13 +438,13 @@
             </div>
           </div>
 
-          <div class="grid-2" style="gap: 0.75rem; display:none;" id="grp-training-fields">
-            <div class="form-group">
+          <div id="grp-training-fields" style="display:none; margin-bottom: 1rem;">
+            <div class="form-group" style="margin-bottom:0.75rem;">
               <label>Rangaufstiege</label>
               <input type="text" id="proto-promotions" value="/" oninput="updateOutput()">
             </div>
-            <div class="form-group">
-              <label>Trainings-Auszeichnungen</label>
+            <div class="form-group" id="grp-training-awards" style="display:none; margin-bottom:0;">
+              <label>Erreichte Auszeichnungen</label>
               <input type="text" id="proto-training-awards" value="/" oninput="updateOutput()">
             </div>
           </div>
@@ -1047,7 +1047,7 @@
           <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
         </label>
         <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
-          <input type="checkbox" id="new-tpl-has-awards" style="width:auto; cursor:pointer;"> Auszeichnungen bei diesem Event erreichbar
+          <input type="checkbox" id="new-tpl-has-awards" style="width:auto; cursor:pointer;"> Auszeichnungen können vergeben werden
         </label>
       </div>
       
@@ -1684,17 +1684,20 @@ function onFormatChange(resetFields = true) {
   const unitBadge = document.getElementById("unit-badge");
 
   const grpEventAwards = document.getElementById("grp-event-awards");
-  const showEventAwards = !cfg.isTraining && Boolean(cfg.hasAwards);
+  const grpTrainingAwards = document.getElementById("grp-training-awards");
+  const hasAwardsEnabled = Boolean(cfg.hasAwards);
 
   if (cfg.isTraining) {
     if (grpTroop) grpTroop.style.display = "none";
-    if (grpTrainingFields) grpTrainingFields.style.display = "grid";
+    if (grpTrainingFields) grpTrainingFields.style.display = "block";
+    if (grpTrainingAwards) grpTrainingAwards.style.display = hasAwardsEnabled ? "block" : "none";
     if (grpEventAwards) grpEventAwards.style.display = "none";
     if (lblSummary) lblSummary.textContent = "Trainingseinheiten";
   } else {
     if (grpTroop) grpTroop.style.display = "block";
     if (grpTrainingFields) grpTrainingFields.style.display = "none";
-    if (grpEventAwards) grpEventAwards.style.display = showEventAwards ? "block" : "none";
+    if (grpTrainingAwards) grpTrainingAwards.style.display = "none";
+    if (grpEventAwards) grpEventAwards.style.display = hasAwardsEnabled ? "block" : "none";
     if (lblSummary) lblSummary.textContent = "Kurzzusammenfassung des Ereignisses";
   }
 
@@ -2386,7 +2389,11 @@ function buildBBCodeFromData(dataObj) {
     bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
     bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
-    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+    if (cfg.hasAwards) {
+      bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+    } else {
+      bb += `\n`;
+    }
   } else {
     bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
     if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
