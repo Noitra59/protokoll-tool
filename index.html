@@ -3641,10 +3641,28 @@ function generateBriefingReport() {
     });
   }
 
+  const tkTrackableProtocols = filteredProtocols.filter(p => {
+    const cfg = tpls[p.format];
+    return Boolean(cfg && cfg.trackTeamkills !== false);
+  });
+  const tkTrackableLogKeys = new Set(
+    filteredTkLogs
+      .filter(t => {
+        const cfg = tpls[t.format];
+        return Boolean(cfg && cfg.trackTeamkills !== false);
+      })
+      .map(t => `${t.date || ""}_${t.format || ""}`)
+  );
+  const tkEligibleEventKeys = new Set([
+    ...tkTrackableProtocols.map(p => `${p.date || ""}_${p.format || ""}`),
+    ...tkTrackableLogKeys
+  ]);
+  const tkEligibleEventsCount = tkEligibleEventKeys.size;
+
   const avgAttendance = totalEventsCount > 0 ? (totalPresenceSum / totalEventsCount).toFixed(1) : "0.0";
   const avgExcused = totalEventsCount > 0 ? (totalExcusedSum / totalEventsCount).toFixed(1) : "0.0";
   const avgUnexcused = totalEventsCount > 0 ? (totalUnexcusedSum / totalEventsCount).toFixed(1) : "0.0";
-  const avgTeamkills = totalEventsCount > 0 ? (totalTeamkillsSum / totalEventsCount).toFixed(1) : "0.0";
+  const avgTeamkills = tkEligibleEventsCount > 0 ? (totalTeamkillsSum / tkEligibleEventsCount).toFixed(1) : "0.0";
 
   let topMembers = [];
   let maxCount = 0;
