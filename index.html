@@ -1948,13 +1948,13 @@ function renderTkRecords() {
     if (selectedYear === "all") return true;
     return Boolean(dt && dt.split("-")[0] === selectedYear);
   };
-  const isNapoEvent = (fmtKey) => {
+  const isNapoTkEvent = (fmtKey) => {
     const cfg = tpls[fmtKey];
-    return Boolean(cfg && cfg.unit === "napo");
+    return Boolean(cfg && cfg.unit === "napo" && cfg.trackTeamkills !== false);
   };
 
-  const logs = (appData.teamkillLogs || []).filter(l => isNapoEvent(l.format) && matchesSelectedYear(l.date));
-  const yearProtocols = (appData.protocols || []).filter(p => isNapoEvent(p.format) && matchesSelectedYear(p.date));
+  const logs = (appData.teamkillLogs || []).filter(l => isNapoTkEvent(l.format) && matchesSelectedYear(l.date));
+  const yearProtocols = (appData.protocols || []).filter(p => isNapoTkEvent(p.format) && matchesSelectedYear(p.date));
 
   const logsByEventKey = new Map();
   logs.forEach(log => {
@@ -1963,7 +1963,7 @@ function renderTkRecords() {
     logsByEventKey.get(evKey).push(log);
   });
 
-  const allNapoEventKeys = new Set([
+  const allNapoTkEventKeys = new Set([
     ...yearProtocols.map(p => `${p.date || ""}_${p.format || ""}`),
     ...logs.map(l => `${l.date || ""}_${l.format || ""}`)
   ]);
@@ -1991,7 +1991,7 @@ function renderTkRecords() {
     if (p.format) ensureFormatEntry(p.format);
   });
 
-  allNapoEventKeys.forEach(evKey => {
+  allNapoTkEventKeys.forEach(evKey => {
     const eventLogs = logsByEventKey.get(evKey) || [];
     const sampleLog = eventLogs[0];
     const sampleProto = yearProtocols.find(p => `${p.date || ""}_${p.format || ""}` === evKey);
@@ -2038,7 +2038,7 @@ function renderTkRecords() {
     }
   });
 
-  const totalEventsCount = allNapoEventKeys.size;
+  const totalEventsCount = allNapoTkEventKeys.size;
   if (totalEventsCount > 0) {
     const overallAvg = (totalRegimentTK / totalEventsCount).toFixed(2);
     avgValEl.textContent = `${overallAvg} TKs`;
