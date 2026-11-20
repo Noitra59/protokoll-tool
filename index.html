@@ -444,9 +444,14 @@
               <input type="text" id="proto-promotions" value="/" oninput="updateOutput()">
             </div>
             <div class="form-group">
-              <label>Erreichte Auszeichnungen</label>
-              <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
+              <label>Trainings-Auszeichnungen</label>
+              <input type="text" id="proto-training-awards" value="/" oninput="updateOutput()">
             </div>
+          </div>
+
+          <div class="form-group" style="display:none;" id="grp-event-awards">
+            <label>Erreichte Auszeichnungen</label>
+            <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
           </div>
         </div>
 
@@ -891,6 +896,7 @@
               <option value="present">Anwesend</option>
               <option value="excused">Abgemeldet</option>
               <option value="unexcused">Unentschuldigt</option>
+              <option value="not_recorded">Nicht erfasst</option>
             </select>
           </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -1036,9 +1042,12 @@
         </div>
         <div></div>
       </div>
-      <div class="form-group" style="display:flex; align-items:center; padding-top:0.5rem;">
+      <div class="form-group" style="display:flex; flex-direction:column; gap:0.5rem; padding-top:0.5rem;">
         <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
           <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
+          <input type="checkbox" id="new-tpl-has-awards" style="width:auto; cursor:pointer;"> Auszeichnungen bei diesem Event erreichbar
         </label>
       </div>
       
@@ -1674,13 +1683,18 @@ function onFormatChange(resetFields = true) {
   const lblSummary = document.getElementById("lbl-summary");
   const unitBadge = document.getElementById("unit-badge");
 
+  const grpEventAwards = document.getElementById("grp-event-awards");
+  const showEventAwards = !cfg.isTraining && Boolean(cfg.hasAwards);
+
   if (cfg.isTraining) {
     if (grpTroop) grpTroop.style.display = "none";
     if (grpTrainingFields) grpTrainingFields.style.display = "grid";
+    if (grpEventAwards) grpEventAwards.style.display = "none";
     if (lblSummary) lblSummary.textContent = "Trainingseinheiten";
   } else {
     if (grpTroop) grpTroop.style.display = "block";
     if (grpTrainingFields) grpTrainingFields.style.display = "none";
+    if (grpEventAwards) grpEventAwards.style.display = showEventAwards ? "block" : "none";
     if (lblSummary) lblSummary.textContent = "Kurzzusammenfassung des Ereignisses";
   }
 
@@ -2378,6 +2392,9 @@ function buildBBCodeFromData(dataObj) {
     if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n`;
     bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
+    if (cfg.hasAwards) {
+      bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+    }
   }
 
   bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
@@ -2418,7 +2435,17 @@ function generateBBCode() {
     scribe: document.getElementById("proto-scribe").value,
     troop: document.getElementById("proto-troop") ? document.getElementById("proto-troop").value : "",
     promotions: document.getElementById("proto-promotions") ? document.getElementById("proto-promotions").value : "/",
-    awards: document.getElementById("proto-awards") ? document.getElementById("proto-awards").value : "/",
+    awards: (() => {
+      const fmtKey = formatEl.value;
+      const tpls = getTemplates();
+      const cfg = tpls[fmtKey];
+      if (cfg && cfg.isTraining) {
+        const trAw = document.getElementById("proto-training-awards");
+        return trAw ? trAw.value : "/";
+      }
+      const evAw = document.getElementById("proto-awards");
+      return evAw ? evAw.value : "/";
+    })(),
     mercs: document.getElementById("proto-mercs") ? document.getElementById("proto-mercs").value : "/",
     summary: document.getElementById("proto-summary") ? document.getElementById("proto-summary").value : "",
     pos: document.getElementById("proto-pos") ? document.getElementById("proto-pos").value : "",
@@ -2494,7 +2521,14 @@ async function saveProtocol() {
     scribe: document.getElementById("proto-scribe").value,
     troop: document.getElementById("proto-troop") ? document.getElementById("proto-troop").value : "",
     promotions: document.getElementById("proto-promotions") ? document.getElementById("proto-promotions").value : "/",
-    awards: document.getElementById("proto-awards") ? document.getElementById("proto-awards").value : "/",
+    awards: (() => {
+      if (cfg && cfg.isTraining) {
+        const trAw = document.getElementById("proto-training-awards");
+        return trAw ? trAw.value : "/";
+      }
+      const evAw = document.getElementById("proto-awards");
+      return evAw ? evAw.value : "/";
+    })(),
     mercs: document.getElementById("proto-mercs").value,
     summary: document.getElementById("proto-summary").value,
     pos: document.getElementById("proto-pos").value,
@@ -2716,6 +2750,7 @@ function editProtocol(id) {
   if(document.getElementById("proto-troop")) document.getElementById("proto-troop").value = p.troop || "";
   if(document.getElementById("proto-promotions")) document.getElementById("proto-promotions").value = p.promotions || "/";
   if(document.getElementById("proto-awards")) document.getElementById("proto-awards").value = p.awards || "/";
+  if(document.getElementById("proto-training-awards")) document.getElementById("proto-training-awards").value = p.awards || "/";
   document.getElementById("proto-mercs").value = p.mercs || "/";
   document.getElementById("proto-summary").value = p.summary;
   document.getElementById("proto-pos").value = p.pos;
@@ -3609,6 +3644,7 @@ async function saveTemplate() {
   const scribe = document.getElementById("new-tpl-scribe").value.trim();
   const troop = document.getElementById("new-tpl-troop").value.trim();
   const trackTK = document.getElementById("new-tpl-track-tk").checked;
+  const hasAwards = document.getElementById("new-tpl-has-awards") ? document.getElementById("new-tpl-has-awards").checked : false;
 
   if (!key || !name) {
     alert("Bitte einen gültigen Schlüssel (ID) und Namen angeben.");
@@ -3632,7 +3668,8 @@ async function saveTemplate() {
     defaultLeader: leader,
     defaultScribe: scribe,
     defaultTroop: troop,
-    trackTeamkills: trackTK
+    trackTeamkills: trackTK,
+    hasAwards: hasAwards
   };
 
   cancelEditTemplate();
@@ -3664,6 +3701,9 @@ function editTemplate(key) {
   document.getElementById("new-tpl-scribe").value = cfg.defaultScribe || "";
   document.getElementById("new-tpl-troop").value = cfg.defaultTroop || "";
   document.getElementById("new-tpl-track-tk").checked = cfg.trackTeamkills === true;
+  if (document.getElementById("new-tpl-has-awards")) {
+    document.getElementById("new-tpl-has-awards").checked = cfg.hasAwards === true;
+  }
   onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = `Template bearbeiten: ${key}`;
@@ -3687,6 +3727,9 @@ function cancelEditTemplate() {
   document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
   document.getElementById("new-tpl-troop").value = "Linieninfanterie";
   document.getElementById("new-tpl-track-tk").checked = false;
+  if (document.getElementById("new-tpl-has-awards")) {
+    document.getElementById("new-tpl-has-awards").checked = false;
+  }
   onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = "Neues Event-Template erstellen";
@@ -3748,7 +3791,7 @@ function renderTemplatesTable() {
       <td>${typeBadge}</td>
       <td>${obligationBadge}</td>
       <td>${unitBadge}</td>
-      <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
+      <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}${cfg.hasAwards ? '<br><span style="color:#fbbf24; font-size:0.75rem; font-weight:600;">🏅 Auszeichnungen</span>' : ''}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${key}')">🗑️ Löschen</button>
@@ -4584,23 +4627,32 @@ function renderMemberEventHistory() {
   const tpls = getTemplates();
 
   const selectedMember = (appData.members || []).find(m => m.id === memberId);
-  const rows = (appData.protocols || [])
-    .filter(p => {
-      if (eventFilter !== "all" && p.format !== eventFilter) return false;
-      const entry = p.attendance && p.attendance[memberId];
-      if (!entry) return false;
-      const pCfg = tpls[p.format];
-      const pUnit = pCfg ? pCfg.unit : "napo";
+  const rows = [];
+
+  (appData.protocols || []).forEach(p => {
+    if (eventFilter !== "all" && p.format !== eventFilter) return;
+    const pCfg = tpls[p.format];
+    const pUnit = pCfg ? pCfg.unit : "napo";
+    const entry = p.attendance ? p.attendance[memberId] : null;
+
+    let resolvedStatus = null;
+    if (entry) {
       if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember) && entry.status !== "present") {
-        return false;
+        resolvedStatus = "not_recorded";
+      } else {
+        resolvedStatus = entry.status || "unexcused";
       }
-      const entryStatus = entry.status || "unexcused";
-      if (statusFilter !== "all" && entryStatus !== statusFilter) {
-        return false;
-      }
-      return true;
-    })
-    .sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    } else if (selectedMember && isMemberEligibleForEventUnit(selectedMember, pUnit)) {
+      resolvedStatus = "not_recorded";
+    }
+
+    if (!resolvedStatus) return;
+    if (statusFilter !== "all" && resolvedStatus !== statusFilter) return;
+
+    rows.push({ proto: p, status: resolvedStatus });
+  });
+
+  rows.sort((a, b) => (b.proto.date || "").localeCompare(a.proto.date || ""));
 
   const totalCount = rows.length;
   const totalPages = Math.max(1, Math.ceil(totalCount / MEMBER_EVENTS_PAGE_SIZE));
@@ -4633,17 +4685,19 @@ function renderMemberEventHistory() {
   }
 
   tbody.innerHTML = "";
-  pageRows.forEach(p => {
-    const entry = p.attendance[memberId] || {};
+  pageRows.forEach(item => {
+    const p = item.proto;
     const cfg = tpls[p.format];
     const eventName = cfg ? cfg.name : p.format;
-    const status = entry.status || "unexcused";
+    const status = item.status;
 
     let statusHtml = "";
     if (status === "present") {
       statusHtml = `<span style="color:var(--success); font-weight:600;">Anwesend</span>`;
     } else if (status === "excused") {
       statusHtml = `<span style="color:var(--warning); font-weight:600;">Abgemeldet</span>`;
+    } else if (status === "not_recorded") {
+      statusHtml = `<span style="color:var(--text-muted); font-weight:600;">Nicht erfasst</span>`;
     } else {
       statusHtml = `<span style="color:var(--danger); font-weight:600;">Unentschuldigt</span>`;
     }
@@ -4654,7 +4708,7 @@ function renderMemberEventHistory() {
       <td>${eventName}</td>
       <td>${statusHtml}</td>
       <td>
-        <button class="btn btn-sm btn-danger" onclick="deleteMemberEventParticipation('${p.id}', '${memberId}')">🗑️ Entfernen</button>
+        <button class="btn btn-sm" onclick="editProtocol('${p.id}')">✏️ Bearbeiten</button>
       </td>
     `;
     tbody.appendChild(tr);
