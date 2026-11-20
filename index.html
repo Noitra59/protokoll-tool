@@ -2779,7 +2779,10 @@ function renderStats() {
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
-      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
+      legendBox.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;"></div> TK / Spieler</div>
+      `;
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
@@ -2970,10 +2973,15 @@ function updateChartTooltipPosition(e, point, state) {
 
   let rowsHtml = "";
   if (state.chartMode === "teamkills") {
+    const tkPerPlayerVal = typeof point.tkPerPlayer === "number" ? point.tkPerPlayer.toFixed(2) : "0.00";
     rowsHtml = `
       <div class="chart-tooltip-row">
         <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#a855f7;"></span>Teamkills</span>
         <span class="chart-tooltip-val" style="color:#c084fc;">${point.tk}</span>
+      </div>
+      <div class="chart-tooltip-row">
+        <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#38bdf8;"></span>TK / Spieler</span>
+        <span class="chart-tooltip-val" style="color:#7dd3fc;">${tkPerPlayerVal}</span>
       </div>
     `;
   } else {
@@ -3087,7 +3095,10 @@ function renderStatsChart() {
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
-      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
+      legendBox.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#38bdf8;"></div> TK / Spieler</div>
+      `;
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Anwesend</div>
@@ -3108,6 +3119,8 @@ function renderStatsChart() {
 
   const tpls = getTemplates();
   const eventsByKey = {};
+  const memberById = {};
+  (appData.members || []).forEach(m => { memberById[m.id] = m; });
 
   const isFormatAllowedForChart = (fmtKey) => {
     const cfg = tpls[fmtKey];
@@ -3132,8 +3145,6 @@ function renderStatsChart() {
     if (p.attendance) {
       const pCfg = tpls[p.format];
       const pUnit = pCfg ? pCfg.unit : "napo";
-      const memberById = {};
-      (appData.members || []).forEach(m => { memberById[m.id] = m; });
       Object.entries(p.attendance).forEach(([mId, a]) => {
         if (!a) return;
         const m = memberById[mId];
@@ -3141,6 +3152,11 @@ function renderStatsChart() {
         if (a.status === "present") eventsByKey[key].pres++;
         else if (a.status === "excused") eventsByKey[key].exc++;
         else eventsByKey[key].unexc++;
+
+        if (a.teamkills) {
+          eventsByKey[key].tk += (parseInt(a.teamkills, 10) || 0);
+          eventsByKey[key].hasTk = true;
+        }
       });
     }
   });
@@ -3190,8 +3206,10 @@ function renderStatsChart() {
         byDate[dt].hasActivity = true;
       }
       if (item.hasTk) {
-        if (!byDate[dt].hasTk || item.tk > byDate[dt].tk) {
+        if (!byDate[dt].hasTk) {
           byDate[dt].tk = item.tk;
+        } else {
+          byDate[dt].tk += item.tk;
         }
         byDate[dt].hasTk = true;
       }
@@ -3201,16 +3219,21 @@ function renderStatsChart() {
   const dataPoints = Object.values(byDate)
     .filter(item => chartMode === "teamkills" ? item.hasTk : item.hasActivity)
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .map(item => ({
-      date: formatGermanDate(item.date),
-      pres: item.pres,
-      exc: item.exc,
-      unexc: item.unexc,
-      tk: item.tk,
-      hasActivity: item.hasActivity,
-      hasTk: item.hasTk,
-      events: item.events || []
-    }));
+    .map(item => {
+      const playerDivisor = item.pres > 0 ? item.pres : 1;
+      const tkPerPlayer = Number((item.tk / playerDivisor).toFixed(2));
+      return {
+        date: formatGermanDate(item.date),
+        pres: item.pres,
+        exc: item.exc,
+        unexc: item.unexc,
+        tk: item.tk,
+        tkPerPlayer,
+        hasActivity: item.hasActivity,
+        hasTk: item.hasTk,
+        events: item.events || []
+      };
+    });
 
   if (dataPoints.length === 0) {
     statsChartHoverState.dataPoints = [];
@@ -3224,7 +3247,7 @@ function renderStatsChart() {
 
   let maxVal = 5;
   dataPoints.forEach(d => {
-    const m = chartMode === "teamkills" ? d.tk : Math.max(d.pres, d.unexc);
+    const m = chartMode === "teamkills" ? Math.max(d.tk, d.tkPerPlayer) : Math.max(d.pres, d.unexc);
     if (m > maxVal) maxVal = m;
   });
 
@@ -3244,7 +3267,8 @@ function renderStatsChart() {
     ctx.lineTo(cssWidth - paddingRight, y);
     ctx.stroke();
 
-    const valLabel = Math.round(maxVal - (maxVal / 4) * i);
+    const rawTick = maxVal - (maxVal / 4) * i;
+    const valLabel = chartMode === "teamkills" ? Number(rawTick.toFixed(1)) : Math.round(rawTick);
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "right";
@@ -3252,11 +3276,14 @@ function renderStatsChart() {
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
-  const divisor = chartMode === "teamkills" ? 2.2 : 4;
-  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 14 : 7, (barGroupWidth / divisor) - 1));
+  const divisor = chartMode === "teamkills" ? 3.2 : 4;
+  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 10 : 7, (barGroupWidth / divisor) - 1));
 
   const seriesMeta = chartMode === "teamkills"
-    ? [{ key: "tk", color: "#a855f7" }]
+    ? [
+        { key: "tk", color: "#a855f7" },
+        { key: "tkPerPlayer", color: "#38bdf8" }
+      ]
     : [
         { key: "pres", color: "#10b981" },
         { key: "unexc", color: "#ef4444" }
