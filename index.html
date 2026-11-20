@@ -2894,7 +2894,41 @@ function renderStats() {
       } else if (statsSortCol === 'pres') {
         valA = a.pres;
         valB = b.pres;
-      let statsChartHoverState = {
+      } else if (statsSortCol === 'exc') {
+        valA = a.exc;
+        valB = b.exc;
+      } else if (statsSortCol === 'unexc') {
+        valA = a.unexc;
+        valB = b.unexc;
+      } else if (statsSortCol === 'rate') {
+        valA = a.rateNum;
+        valB = b.rateNum;
+      }
+      return statsSortAsc ? (valA - valB) : (valB - valA);
+    });
+  }
+
+  memberStats.sort((a, b) => {
+    if (statsSortCol !== null) return 0;
+    return b.rateNum - a.rateNum;
+  });
+
+  memberStats.forEach(item => {
+    const m = item.member;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><strong>${item.nameLabel}</strong></td>
+      <td>${item.unitBadges}</td>
+      <td style="color:var(--success); font-weight:600;">${item.pres}</td>
+      <td style="color:var(--warning);">${item.exc}</td>
+      <td style="color:var(--danger);">${item.unexc}</td>
+      <td><strong>${item.rateNum}%</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${item.pres}/${item.total})</span></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+let statsChartHoverState = {
   dataPoints: [],
   seriesMeta: [],
   chartMode: "activity",
@@ -3264,46 +3298,6 @@ function renderStatsChart() {
         const h = maxVal > 0 ? (v.val / maxVal) * chartHeight : 0;
         const x = startX + vIdx * (barWidth + 2);
         const y = paddingTop + chartHeight - h;
-
-        ctx.fillStyle = v.color;
-        ctx.fillRect(x, y, barWidth, Math.max(0, h));
-      });
-    }
-  });
-
-  if (chartType === "line") {
-    seriesMeta.forEach(s => {
-      const validPoints = [];
-      dataPoints.forEach((d, idx) => {
-        const hasEventForSeries = chartMode === "teamkills" ? d.hasTk : d.hasActivity;
-        if (!hasEventForSeries) return;
-        const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
-        const val = d[s.key] || 0;
-        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
-        const y = paddingTop + chartHeight - h;
-        validPoints.push({ x: groupX, y });
-      });
-
-      if (validPoints.length > 0) {
-        ctx.strokeStyle = s.color;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        validPoints.forEach((pt, idx) => {
-          if (idx === 0) ctx.moveTo(pt.x, pt.y);
-          else ctx.lineTo(pt.x, pt.y);
-        });
-        ctx.stroke();
-
-        validPoints.forEach(pt => {
-          ctx.fillStyle = s.color;
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      }
-    });
-  }
-}    const y = paddingTop + chartHeight - h;
 
         ctx.fillStyle = v.color;
         ctx.fillRect(x, y, barWidth, Math.max(0, h));
