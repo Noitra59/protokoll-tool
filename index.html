@@ -4335,6 +4335,8 @@ function refreshImportPreviewMapping() {
     unmatchedBox.style.display = "none";
     unmatchedList.innerHTML = "";
   }
+}
+
 function onManualUnmatchedAssign(encodedKey, status, encodedName, encodedNote, memberId) {
   const key = decodeURIComponent(encodedKey);
   if (memberId) {
@@ -4343,8 +4345,6 @@ function onManualUnmatchedAssign(encodedKey, status, encodedName, encodedNote, m
     delete manualImportOverrides[key];
   }
   refreshImportPreviewMapping();
-}
-
 }
 
 async function confirmBBCodeImport() {
