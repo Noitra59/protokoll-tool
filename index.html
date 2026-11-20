@@ -2693,7 +2693,7 @@ function editProtocol(id) {
   currentAttendance = JSON.parse(JSON.stringify(p.attendance || {}));
   onFormatChange(false);
 
-  const editorNavBtn = document.querySelector("header nav button[onclick*="switchTab('editor'"]") || document.querySelector("header nav button");
+  const editorNavBtn = document.querySelector(`header nav button[onclick*="switchTab('editor'"]`) || document.querySelector("header nav button");
   switchTab('editor', editorNavBtn);
   updateEditorModeIndicator();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2799,7 +2799,10 @@ function renderStats() {
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
-      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
+      legendBox.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> TK / Anwesendem</div>
+      `;
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
@@ -2975,7 +2978,10 @@ function renderStatsChart() {
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
-      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
+      legendBox.innerHTML = `
+        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> TK / Anwesendem</div>
+      `;
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Anwesend</div>
@@ -3085,15 +3091,19 @@ function renderStatsChart() {
   const dataPoints = Object.values(byDate)
     .filter(item => chartMode === "teamkills" ? item.hasTk : item.hasActivity)
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .map(item => ({
-      date: formatGermanDate(item.date),
-      pres: item.pres,
-      exc: item.exc,
-      unexc: item.unexc,
-      tk: item.tk,
-      hasActivity: item.hasActivity,
-      hasTk: item.hasTk
-    }));
+    .map(item => {
+      const tkPerPresent = item.pres > 0 ? Number((item.tk / item.pres).toFixed(2)) : 0;
+      return {
+        date: formatGermanDate(item.date),
+        pres: item.pres,
+        exc: item.exc,
+        unexc: item.unexc,
+        tk: item.tk,
+        tkPerPresent,
+        hasActivity: item.hasActivity,
+        hasTk: item.hasTk
+      };
+    });
 
   if (dataPoints.length === 0) {
     ctx.fillStyle = "#9ba1a6";
@@ -3106,7 +3116,7 @@ function renderStatsChart() {
 
   let maxVal = 5;
   dataPoints.forEach(d => {
-    const m = chartMode === "teamkills" ? d.tk : Math.max(d.pres, d.unexc);
+    const m = chartMode === "teamkills" ? Math.max(d.tk, d.tkPerPresent) : Math.max(d.pres, d.unexc);
     if (m > maxVal) maxVal = m;
   });
 
@@ -3126,7 +3136,8 @@ function renderStatsChart() {
     ctx.lineTo(cssWidth - paddingRight, y);
     ctx.stroke();
 
-    const valLabel = Math.round(maxVal - (maxVal / 4) * i);
+    const rawTick = maxVal - (maxVal / 4) * i;
+    const valLabel = chartMode === "teamkills" ? Number(rawTick.toFixed(1)) : Math.round(rawTick);
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "right";
@@ -3134,11 +3145,14 @@ function renderStatsChart() {
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
-  const divisor = chartMode === "teamkills" ? 2.2 : 4;
-  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 14 : 7, (barGroupWidth / divisor) - 1));
+  const divisor = chartMode === "teamkills" ? 3.2 : 4;
+  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 11 : 7, (barGroupWidth / divisor) - 1));
 
   const seriesMeta = chartMode === "teamkills"
-    ? [{ key: "tk", color: "#a855f7" }]
+    ? [
+        { key: "tk", color: "#a855f7" },
+        { key: "tkPerPresent", color: "#f59e0b" }
+      ]
     : [
         { key: "pres", color: "#10b981" },
         { key: "unexc", color: "#ef4444" }
