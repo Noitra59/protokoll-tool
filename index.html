@@ -833,11 +833,12 @@
           </div>
           <div style="display:flex; gap:0.35rem; align-items:center;">
             <label for="stats-member-events-status-filter" style="margin:0;">Status:</label>
-            <select id="stats-member-events-status-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:150px; padding:0.35rem 0.5rem;">
+            <select id="stats-member-events-status-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:165px; padding:0.35rem 0.5rem;">
               <option value="all">Alle Status</option>
               <option value="present">Anwesend</option>
               <option value="excused">Abgemeldet</option>
               <option value="unexcused">Unentschuldigt</option>
+              <option value="missing">Nicht erfasst</option>
             </select>
           </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -4353,10 +4354,19 @@ function renderMemberEventHistory() {
   const rows = (appData.protocols || [])
     .filter(p => {
       if (eventFilter !== "all" && p.format !== eventFilter) return false;
-      const entry = p.attendance && p.attendance[memberId];
-      if (!entry) return false;
       const pCfg = tpls[p.format];
       const pUnit = pCfg ? pCfg.unit : "napo";
+      const entry = p.attendance && p.attendance[memberId];
+
+      if (!entry) {
+        if (statusFilter !== "missing") return false;
+        if (!selectedMember) return false;
+        if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember)) return false;
+        if (pUnit === "bre" && !selectedMember.inBre) return false;
+        if (pUnit === "napo" && !selectedMember.inNapo) return false;
+        return true;
+      }
+
       if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember) && entry.status !== "present") {
         return false;
       }
@@ -4400,28 +4410,33 @@ function renderMemberEventHistory() {
 
   tbody.innerHTML = "";
   pageRows.forEach(p => {
-    const entry = p.attendance[memberId] || {};
+    const hasEntry = Boolean(p.attendance && Object.prototype.hasOwnProperty.call(p.attendance, memberId));
+    const entry = hasEntry ? (p.attendance[memberId] || {}) : {};
     const cfg = tpls[p.format];
     const eventName = cfg ? cfg.name : p.format;
-    const status = entry.status || "unexcused";
+    const status = hasEntry ? (entry.status || "unexcused") : "missing";
 
     let statusHtml = "";
     if (status === "present") {
       statusHtml = `<span style="color:var(--success); font-weight:600;">Anwesend</span>`;
     } else if (status === "excused") {
       statusHtml = `<span style="color:var(--warning); font-weight:600;">Abgemeldet</span>`;
+    } else if (status === "missing") {
+      statusHtml = `<span style="color:var(--text-muted); font-weight:600; font-style:italic;">Nicht erfasst</span>`;
     } else {
       statusHtml = `<span style="color:var(--danger); font-weight:600;">Unentschuldigt</span>`;
     }
+
+    const actionHtml = hasEntry
+      ? `<button class="btn btn-sm btn-danger" onclick="deleteMemberEventParticipation('${p.id}', '${memberId}')">🗑️ Entfernen</button>`
+      : `<button class="btn btn-sm btn-secondary" onclick="editProtocol('${p.id}')">✏️ Protokoll</button>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${formatGermanDate(p.date)}</strong></td>
       <td>${eventName}</td>
       <td>${statusHtml}</td>
-      <td>
-        <button class="btn btn-sm btn-danger" onclick="deleteMemberEventParticipation('${p.id}', '${memberId}')">🗑️ Entfernen</button>
-      </td>
+      <td>${actionHtml}</td>
     `;
     tbody.appendChild(tr);
   });
