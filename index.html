@@ -1944,12 +1944,29 @@ function renderTkRecords() {
   const playerDetailsEl = document.getElementById("record-player-details");
 
   const tpls = getTemplates();
-  const logs = (appData.teamkillLogs || []).filter(l => {
-    const cfg = tpls[l.format];
-    if (!cfg || cfg.unit !== "napo") return false;
+  const matchesSelectedYear = (dt) => {
     if (selectedYear === "all") return true;
-    return l.date && l.date.split("-")[0] === selectedYear;
+    return Boolean(dt && dt.split("-")[0] === selectedYear);
+  };
+  const isNapoEvent = (fmtKey) => {
+    const cfg = tpls[fmtKey];
+    return Boolean(cfg && cfg.unit === "napo");
+  };
+
+  const logs = (appData.teamkillLogs || []).filter(l => isNapoEvent(l.format) && matchesSelectedYear(l.date));
+  const yearProtocols = (appData.protocols || []).filter(p => isNapoEvent(p.format) && matchesSelectedYear(p.date));
+
+  const logsByEventKey = new Map();
+  logs.forEach(log => {
+    const evKey = `${log.date || ""}_${log.format || ""}`;
+    if (!logsByEventKey.has(evKey)) logsByEventKey.set(evKey, []);
+    logsByEventKey.get(evKey).push(log);
   });
+
+  const allNapoEventKeys = new Set([
+    ...yearProtocols.map(p => `${p.date || ""}_${p.format || ""}`),
+    ...logs.map(l => `${l.date || ""}_${l.format || ""}`)
+  ]);
 
   const membersMap = {};
   (appData.members || []).filter(m => m.inNapo).forEach(m => membersMap[m.id] = m);
@@ -1962,51 +1979,68 @@ function renderTkRecords() {
   let bestPlayers = [];
 
   const formatTotals = {};
+  const ensureFormatEntry = (fmtKey) => {
+    if (!formatTotals[fmtKey]) {
+      const cfg = tpls[fmtKey];
+      formatTotals[fmtKey] = { name: cfg ? cfg.name : fmtKey, totalTK: 0, count: 0 };
+    }
+    return formatTotals[fmtKey];
+  };
 
-  logs.forEach(log => {
-    let eventSum = 0;
-    const cfg = tpls[log.format];
-    const fmtKey = log.format;
+  yearProtocols.forEach(p => {
+    if (p.format) ensureFormatEntry(p.format);
+  });
+
+  allNapoEventKeys.forEach(evKey => {
+    const eventLogs = logsByEventKey.get(evKey) || [];
+    const sampleLog = eventLogs[0];
+    const sampleProto = yearProtocols.find(p => `${p.date || ""}_${p.format || ""}` === evKey);
+    const fmtKey = (sampleLog && sampleLog.format) || (sampleProto && sampleProto.format) || "";
+    const eventDate = (sampleLog && sampleLog.date) || (sampleProto && sampleProto.date) || "";
+    const cfg = tpls[fmtKey];
     const eventName = cfg ? cfg.name : fmtKey;
 
-    if (!formatTotals[fmtKey]) {
-      formatTotals[fmtKey] = { name: eventName, totalTK: 0, count: 0 };
-    }
+    let eventSum = 0;
+    eventLogs.forEach(log => {
+      if (log.records) {
+        for (const [mId, rec] of Object.entries(log.records)) {
+          if (!membersMap[mId]) continue;
+          const c = parseInt(rec.count) || 0;
+          eventSum += c;
+          totalRegimentTK += c;
 
-    if (log.records) {
-      for (const [mId, rec] of Object.entries(log.records)) {
-        if (!membersMap[mId]) continue;
-        const c = parseInt(rec.count) || 0;
-        eventSum += c;
-        totalRegimentTK += c;
+          const playerName = membersMap[mId].napoName || "Unbekannt";
+          const dateStr = formatGermanDate(log.date || eventDate);
 
-        const playerName = membersMap[mId].napoName || "Unbekannt";
-        const dateStr = formatGermanDate(log.date);
-
-        if (c > maxPlayerTK) {
-          maxPlayerTK = c;
-          bestPlayers = [{ name: playerName, event: eventName, date: dateStr }];
-        } else if (c === maxPlayerTK && c > 0) {
-          if (!bestPlayers.some(p => p.name === playerName && p.event === eventName && p.date === dateStr)) {
-            bestPlayers.push({ name: playerName, event: eventName, date: dateStr });
+          if (c > maxPlayerTK) {
+            maxPlayerTK = c;
+            bestPlayers = [{ name: playerName, event: eventName, date: dateStr }];
+          } else if (c === maxPlayerTK && c > 0) {
+            if (!bestPlayers.some(p => p.name === playerName && p.event === eventName && p.date === dateStr)) {
+              bestPlayers.push({ name: playerName, event: eventName, date: dateStr });
+            }
           }
         }
       }
-    }
+    });
 
-    formatTotals[fmtKey].totalTK += eventSum;
-    formatTotals[fmtKey].count += 1;
+    if (fmtKey) {
+      const ft = ensureFormatEntry(fmtKey);
+      ft.totalTK += eventSum;
+      ft.count += 1;
+    }
 
     if (eventSum > maxEventTK) {
       maxEventTK = eventSum;
-      bestEventLogs = [log];
+      bestEventLogs = [{ date: eventDate, format: fmtKey }];
     } else if (eventSum === maxEventTK && eventSum > 0) {
-      bestEventLogs.push(log);
+      bestEventLogs.push({ date: eventDate, format: fmtKey });
     }
   });
 
-  if (logs.length > 0) {
-    const overallAvg = (totalRegimentTK / logs.length).toFixed(2);
+  const totalEventsCount = allNapoEventKeys.size;
+  if (totalEventsCount > 0) {
+    const overallAvg = (totalRegimentTK / totalEventsCount).toFixed(2);
     avgValEl.textContent = `${overallAvg} TKs`;
     
     let detailsHtml = "";
