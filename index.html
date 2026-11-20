@@ -2973,7 +2973,9 @@ function updateChartTooltipPosition(e, point, state) {
 
   let rowsHtml = "";
   if (state.chartMode === "teamkills") {
-    const tkPerPlayerVal = typeof point.tkPerPlayer === "number" ? point.tkPerPlayer.toFixed(2) : "0.00";
+    const tkPerPlayerVal = (point.hasTkPerPlayer && typeof point.tkPerPlayer === "number")
+      ? point.tkPerPlayer.toFixed(2)
+      : "Kein Protokoll";
     rowsHtml = `
       <div class="chart-tooltip-row">
         <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#a855f7;"></span>Teamkills</span>
@@ -2981,7 +2983,7 @@ function updateChartTooltipPosition(e, point, state) {
       </div>
       <div class="chart-tooltip-row">
         <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#38bdf8;"></span>TK / Spieler</span>
-        <span class="chart-tooltip-val" style="color:#7dd3fc;">${tkPerPlayerVal}</span>
+        <span class="chart-tooltip-val" style="color:${point.hasTkPerPlayer ? "#7dd3fc" : "var(--text-muted)"};">${tkPerPlayerVal}</span>
       </div>
     `;
   } else {
@@ -3220,8 +3222,8 @@ function renderStatsChart() {
     .filter(item => chartMode === "teamkills" ? item.hasTk : item.hasActivity)
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
     .map(item => {
-      const playerDivisor = item.pres > 0 ? item.pres : 1;
-      const tkPerPlayer = Number((item.tk / playerDivisor).toFixed(2));
+      const hasProtocolWithPlayers = Boolean(item.hasActivity && item.pres > 0);
+      const tkPerPlayer = hasProtocolWithPlayers ? Number((item.tk / item.pres).toFixed(2)) : null;
       return {
         date: formatGermanDate(item.date),
         pres: item.pres,
@@ -3229,6 +3231,7 @@ function renderStatsChart() {
         unexc: item.unexc,
         tk: item.tk,
         tkPerPlayer,
+        hasTkPerPlayer: hasProtocolWithPlayers,
         hasActivity: item.hasActivity,
         hasTk: item.hasTk,
         events: item.events || []
@@ -3247,7 +3250,9 @@ function renderStatsChart() {
 
   let maxVal = 5;
   dataPoints.forEach(d => {
-    const m = chartMode === "teamkills" ? Math.max(d.tk, d.tkPerPlayer) : Math.max(d.pres, d.unexc);
+    const m = chartMode === "teamkills"
+      ? Math.max(d.tk, d.hasTkPerPlayer && typeof d.tkPerPlayer === "number" ? d.tkPerPlayer : 0)
+      : Math.max(d.pres, d.unexc);
     if (m > maxVal) maxVal = m;
   });
 
@@ -3317,7 +3322,8 @@ function renderStatsChart() {
     }
 
     if (chartType === "bar") {
-      const values = seriesMeta.map(s => ({ val: d[s.key] || 0, color: s.color }));
+      const activeSeries = seriesMeta.filter(s => !(chartMode === "teamkills" && s.key === "tkPerPlayer" && !d.hasTkPerPlayer));
+      const values = activeSeries.map(s => ({ val: d[s.key] || 0, color: s.color }));
       const totalGroupW = values.length * (barWidth + 2);
       const startX = groupX - (totalGroupW / 2);
 
@@ -3336,7 +3342,9 @@ function renderStatsChart() {
     seriesMeta.forEach(s => {
       const validPoints = [];
       dataPoints.forEach((d, idx) => {
-        const hasEventForSeries = chartMode === "teamkills" ? d.hasTk : d.hasActivity;
+        const hasEventForSeries = chartMode === "teamkills"
+          ? (s.key === "tkPerPlayer" ? Boolean(d.hasTkPerPlayer) : Boolean(d.hasTk))
+          : Boolean(d.hasActivity);
         if (!hasEventForSeries) return;
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
         const val = d[s.key] || 0;
