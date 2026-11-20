@@ -386,17 +386,15 @@
               <label id="lbl-troop-or-prom">Eingesetzte Truppenklasse</label>
               <input type="text" id="proto-troop" value="Linieninfanterie" oninput="updateOutput()">
             </div>
-          </div>
-
-          <div class="grid-2" style="gap: 0.75rem; display:none;" id="grp-training-fields">
-            <div class="form-group">
+            <div class="form-group" id="grp-promotions" style="display:none;">
               <label>Rangaufstiege</label>
               <input type="text" id="proto-promotions" value="/" oninput="updateOutput()">
             </div>
-            <div class="form-group">
-              <label>Erreichte Auszeichnungen</label>
-              <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
-            </div>
+          </div>
+
+          <div class="form-group" id="grp-awards" style="display:none;">
+            <label>Erreichte Auszeichnungen</label>
+            <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
           </div>
         </div>
 
@@ -981,13 +979,16 @@
       <div class="grid-2" style="gap: 0.75rem;">
         <div class="form-group" id="tpl-troop-group">
           <label>Standard-Truppenklasse</label>
-          <input type="text" id="new-tpl-troop" value="Linieninfanterie">
+          <input type="text" id="new-tpl-troop" value="/">
         </div>
         <div></div>
       </div>
-      <div class="form-group" style="display:flex; align-items:center; padding-top:0.5rem;">
+      <div class="form-group" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap; padding-top:0.5rem;">
         <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
           <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
+        </label>
+        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
+          <input type="checkbox" id="new-tpl-has-awards" style="width:auto; cursor:pointer;"> Erreichte Auszeichnungen erfassen
         </label>
       </div>
       
@@ -1009,6 +1010,7 @@
             <th>Teilnahme</th>
             <th>Einheit</th>
             <th>Teamkills</th>
+            <th>Auszeichnungen</th>
             <th>Aktionen</th>
           </tr>
         </thead>
@@ -1055,7 +1057,8 @@ const DEFAULT_TEMPLATES = {
     defaultScribe: "Fähnrich Lorenz",
     defaultTroop: "",
     isTraining: true,
-    trackTeamkills: false
+    trackTeamkills: false,
+    hasAwards: true
   },
   fri_bre: {
     name: "Freitag – Eichenwacht Event",
@@ -1065,7 +1068,8 @@ const DEFAULT_TEMPLATES = {
     defaultScribe: "Banneret Lorenz",
     defaultTroop: "Bogenschützen",
     isTraining: false,
-    trackTeamkills: true
+    trackTeamkills: true,
+    hasAwards: true
   },
   sun_33rd: {
     name: "Sonntag – 33rd Linebattle",
@@ -1619,19 +1623,22 @@ function onFormatChange(resetFields = true) {
   if (!cfg) return;
 
   const grpTroop = document.getElementById("grp-troop");
-  const grpTrainingFields = document.getElementById("grp-training-fields");
+  const grpPromotions = document.getElementById("grp-promotions");
+  const grpAwards = document.getElementById("grp-awards");
   const lblSummary = document.getElementById("lbl-summary");
   const unitBadge = document.getElementById("unit-badge");
+  const showAwards = Boolean(cfg.hasAwards || cfg.isTraining);
 
   if (cfg.isTraining) {
     if (grpTroop) grpTroop.style.display = "none";
-    if (grpTrainingFields) grpTrainingFields.style.display = "grid";
+    if (grpPromotions) grpPromotions.style.display = "block";
     if (lblSummary) lblSummary.textContent = "Trainingseinheiten";
   } else {
     if (grpTroop) grpTroop.style.display = "block";
-    if (grpTrainingFields) grpTrainingFields.style.display = "none";
+    if (grpPromotions) grpPromotions.style.display = "none";
     if (lblSummary) lblSummary.textContent = "Kurzzusammenfassung des Ereignisses";
   }
+  if (grpAwards) grpAwards.style.display = showAwards ? "block" : "none";
 
   if (unitBadge) unitBadge.textContent = cfg.unit === "bre" ? "Eichenwacht" : "Nr59";
 
@@ -1640,12 +1647,16 @@ function onFormatChange(resetFields = true) {
     const leaderEl = document.getElementById("proto-leader");
     const scribeEl = document.getElementById("proto-scribe");
     const troopEl = document.getElementById("proto-troop");
+    const promotionsEl = document.getElementById("proto-promotions");
+    const awardsEl = document.getElementById("proto-awards");
     const mercsEl = document.getElementById("proto-mercs");
     const summaryEl = document.getElementById("proto-summary");
 
     if (leaderEl) leaderEl.value = cfg.defaultLeader || "";
     if (scribeEl) scribeEl.value = cfg.defaultScribe || "";
-    if (troopEl) troopEl.value = cfg.defaultTroop || "";
+    if (troopEl) troopEl.value = (cfg.defaultTroop && cfg.defaultTroop.trim() !== "") ? cfg.defaultTroop : "/";
+    if (promotionsEl) promotionsEl.value = "/";
+    if (awardsEl) awardsEl.value = "/";
     if (mercsEl) mercsEl.value = "/";
     if (summaryEl) summaryEl.value = "";
   }
@@ -2267,16 +2278,23 @@ function buildBBCodeFromData(dataObj) {
 
   let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]\n\n`;
 
+  const troopDisplay = (troop && troop.trim() !== "") ? troop : "/";
+  const showAwards = Boolean(cfg.hasAwards || cfg.isTraining);
+
   if (cfg.isTraining) {
     bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
     bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
-    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+    if (showAwards) bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n`;
+    bb += `\n`;
   } else {
     bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
     if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n`;
-    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
+    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troopDisplay}\n\n`;
+    if (showAwards) {
+      bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
+    }
   }
 
   bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
@@ -3316,8 +3334,10 @@ async function saveTemplate() {
   const isTraining = document.getElementById("new-tpl-is-training").value === "true";
   const leader = document.getElementById("new-tpl-leader").value.trim();
   const scribe = document.getElementById("new-tpl-scribe").value.trim();
-  const troop = document.getElementById("new-tpl-troop").value.trim();
+  const troopRaw = document.getElementById("new-tpl-troop").value.trim();
+  const troop = troopRaw !== "" ? troopRaw : "/";
   const trackTK = document.getElementById("new-tpl-track-tk").checked;
+  const hasAwards = document.getElementById("new-tpl-has-awards").checked;
 
   if (!key || !name) {
     alert("Bitte einen gültigen Schlüssel (ID) und Namen angeben.");
@@ -3341,7 +3361,8 @@ async function saveTemplate() {
     defaultLeader: leader,
     defaultScribe: scribe,
     defaultTroop: troop,
-    trackTeamkills: trackTK
+    trackTeamkills: trackTK,
+    hasAwards: hasAwards
   };
 
   cancelEditTemplate();
@@ -3371,8 +3392,9 @@ function editTemplate(key) {
   document.getElementById("new-tpl-is-training").value = cfg.isTraining ? "true" : "false";
   document.getElementById("new-tpl-leader").value = cfg.defaultLeader || "";
   document.getElementById("new-tpl-scribe").value = cfg.defaultScribe || "";
-  document.getElementById("new-tpl-troop").value = cfg.defaultTroop || "";
+  document.getElementById("new-tpl-troop").value = (cfg.defaultTroop && cfg.defaultTroop.trim() !== "") ? cfg.defaultTroop : "/";
   document.getElementById("new-tpl-track-tk").checked = cfg.trackTeamkills === true;
+  document.getElementById("new-tpl-has-awards").checked = Boolean(cfg.hasAwards || cfg.isTraining);
   onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = `Template bearbeiten: ${key}`;
@@ -3394,8 +3416,9 @@ function cancelEditTemplate() {
   document.getElementById("new-tpl-is-training").value = "false";
   document.getElementById("new-tpl-leader").value = "Oberst Darthkiller, Oberst Lama";
   document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
-  document.getElementById("new-tpl-troop").value = "Linieninfanterie";
+  document.getElementById("new-tpl-troop").value = "/";
   document.getElementById("new-tpl-track-tk").checked = false;
+  document.getElementById("new-tpl-has-awards").checked = false;
   onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = "Neues Event-Template erstellen";
@@ -3458,6 +3481,7 @@ function renderTemplatesTable() {
       <td>${obligationBadge}</td>
       <td>${unitBadge}</td>
       <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
+      <td>${(cfg.hasAwards || cfg.isTraining) ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${key}')">🗑️ Löschen</button>
