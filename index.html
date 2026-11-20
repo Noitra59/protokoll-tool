@@ -238,6 +238,56 @@
   .record-value { font-size: 1.3rem; font-weight: 800; color: var(--danger); margin-bottom: 0; }
   .record-details { font-size: 0.82rem; color: var(--text); }
 
+  /* Chart Hover Tooltip */
+  .chart-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(18, 20, 23, 0.96);
+    border: 1px solid #3b82f6;
+    border-radius: 6px;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.78rem;
+    color: var(--text);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
+    z-index: 50;
+    opacity: 0;
+    transform: translate(-50%, -100%);
+    transition: opacity 0.12s ease;
+    white-space: nowrap;
+    line-height: 1.45;
+  }
+  .chart-tooltip.visible {
+    opacity: 1;
+  }
+  .chart-tooltip-header {
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.2rem;
+  }
+  .chart-tooltip-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .chart-tooltip-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--text-muted);
+  }
+  .chart-tooltip-swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 2px;
+    display: inline-block;
+  }
+  .chart-tooltip-val {
+    font-weight: 700;
+  }
+
   /* Chart Container */
   .chart-container {
     background: var(--bg);
@@ -386,15 +436,17 @@
               <label id="lbl-troop-or-prom">Eingesetzte Truppenklasse</label>
               <input type="text" id="proto-troop" value="Linieninfanterie" oninput="updateOutput()">
             </div>
-            <div class="form-group" id="grp-promotions" style="display:none;">
+          </div>
+
+          <div class="grid-2" style="gap: 0.75rem; display:none;" id="grp-training-fields">
+            <div class="form-group">
               <label>Rangaufstiege</label>
               <input type="text" id="proto-promotions" value="/" oninput="updateOutput()">
             </div>
-          </div>
-
-          <div class="form-group" id="grp-awards" style="display:none;">
-            <label>Erreichte Auszeichnungen</label>
-            <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
+            <div class="form-group">
+              <label>Erreichte Auszeichnungen</label>
+              <input type="text" id="proto-awards" value="/" oninput="updateOutput()">
+            </div>
           </div>
         </div>
 
@@ -758,6 +810,7 @@
       </div>
       <div class="chart-container">
         <canvas id="attendance-chart" style="width:100%; height:100%; display:block;"></canvas>
+        <div id="chart-tooltip" class="chart-tooltip" role="tooltip"></div>
       </div>
 
       <div style="background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem;">
@@ -833,12 +886,11 @@
           </div>
           <div style="display:flex; gap:0.35rem; align-items:center;">
             <label for="stats-member-events-status-filter" style="margin:0;">Status:</label>
-            <select id="stats-member-events-status-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:165px; padding:0.35rem 0.5rem;">
+            <select id="stats-member-events-status-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:150px; padding:0.35rem 0.5rem;">
               <option value="all">Alle Status</option>
               <option value="present">Anwesend</option>
               <option value="excused">Abgemeldet</option>
               <option value="unexcused">Unentschuldigt</option>
-              <option value="missing">Nicht erfasst</option>
             </select>
           </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
@@ -980,16 +1032,13 @@
       <div class="grid-2" style="gap: 0.75rem;">
         <div class="form-group" id="tpl-troop-group">
           <label>Standard-Truppenklasse</label>
-          <input type="text" id="new-tpl-troop" value="/">
+          <input type="text" id="new-tpl-troop" value="Linieninfanterie">
         </div>
         <div></div>
       </div>
-      <div class="form-group" style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap; padding-top:0.5rem;">
+      <div class="form-group" style="display:flex; align-items:center; padding-top:0.5rem;">
         <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
           <input type="checkbox" id="new-tpl-track-tk" style="width:auto; cursor:pointer;"> Teamkills bei diesem Event erfassen
-        </label>
-        <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; color:var(--text); margin:0;">
-          <input type="checkbox" id="new-tpl-has-awards" style="width:auto; cursor:pointer;"> Erreichte Auszeichnungen erfassen
         </label>
       </div>
       
@@ -1011,7 +1060,6 @@
             <th>Teilnahme</th>
             <th>Einheit</th>
             <th>Teamkills</th>
-            <th>Auszeichnungen</th>
             <th>Aktionen</th>
           </tr>
         </thead>
@@ -1058,8 +1106,7 @@ const DEFAULT_TEMPLATES = {
     defaultScribe: "Fähnrich Lorenz",
     defaultTroop: "",
     isTraining: true,
-    trackTeamkills: false,
-    hasAwards: true
+    trackTeamkills: false
   },
   fri_bre: {
     name: "Freitag – Eichenwacht Event",
@@ -1069,8 +1116,7 @@ const DEFAULT_TEMPLATES = {
     defaultScribe: "Banneret Lorenz",
     defaultTroop: "Bogenschützen",
     isTraining: false,
-    trackTeamkills: true,
-    hasAwards: true
+    trackTeamkills: true
   },
   sun_33rd: {
     name: "Sonntag – 33rd Linebattle",
@@ -1494,20 +1540,10 @@ function updateStatsYearDropdown() {
 }
 
 function updateEditorModeIndicator() {
-  const editIdEl = document.getElementById("edit-protocol-id");
-  const editId = editIdEl ? editIdEl.value : "";
+  const editId = document.getElementById("edit-protocol-id").value;
   const banner = document.getElementById("editor-mode-banner");
-  let cancelBtn = document.getElementById("btn-cancel-edit");
+  const cancelBtn = document.getElementById("btn-cancel-edit");
   if (!banner) return;
-
-  if (!cancelBtn) {
-    cancelBtn = document.createElement("button");
-    cancelBtn.className = "btn btn-sm btn-secondary";
-    cancelBtn.id = "btn-cancel-edit";
-    cancelBtn.type = "button";
-    cancelBtn.textContent = "Abbrechen";
-    cancelBtn.onclick = resetEditorMode;
-  }
 
   if (editId) {
     banner.className = "mode-indicator edit";
@@ -1517,7 +1553,6 @@ function updateEditorModeIndicator() {
   } else {
     banner.className = "mode-indicator new";
     banner.innerHTML = `<span>✨ Modus: Neues Protokoll erstellen</span>`;
-    banner.appendChild(cancelBtn);
     cancelBtn.style.display = "none";
   }
 }
@@ -1635,22 +1670,19 @@ function onFormatChange(resetFields = true) {
   if (!cfg) return;
 
   const grpTroop = document.getElementById("grp-troop");
-  const grpPromotions = document.getElementById("grp-promotions");
-  const grpAwards = document.getElementById("grp-awards");
+  const grpTrainingFields = document.getElementById("grp-training-fields");
   const lblSummary = document.getElementById("lbl-summary");
   const unitBadge = document.getElementById("unit-badge");
-  const showAwards = Boolean(cfg.hasAwards || cfg.isTraining);
 
   if (cfg.isTraining) {
     if (grpTroop) grpTroop.style.display = "none";
-    if (grpPromotions) grpPromotions.style.display = "block";
+    if (grpTrainingFields) grpTrainingFields.style.display = "grid";
     if (lblSummary) lblSummary.textContent = "Trainingseinheiten";
   } else {
     if (grpTroop) grpTroop.style.display = "block";
-    if (grpPromotions) grpPromotions.style.display = "none";
+    if (grpTrainingFields) grpTrainingFields.style.display = "none";
     if (lblSummary) lblSummary.textContent = "Kurzzusammenfassung des Ereignisses";
   }
-  if (grpAwards) grpAwards.style.display = showAwards ? "block" : "none";
 
   if (unitBadge) unitBadge.textContent = cfg.unit === "bre" ? "Eichenwacht" : "Nr59";
 
@@ -1659,16 +1691,12 @@ function onFormatChange(resetFields = true) {
     const leaderEl = document.getElementById("proto-leader");
     const scribeEl = document.getElementById("proto-scribe");
     const troopEl = document.getElementById("proto-troop");
-    const promotionsEl = document.getElementById("proto-promotions");
-    const awardsEl = document.getElementById("proto-awards");
     const mercsEl = document.getElementById("proto-mercs");
     const summaryEl = document.getElementById("proto-summary");
 
     if (leaderEl) leaderEl.value = cfg.defaultLeader || "";
     if (scribeEl) scribeEl.value = cfg.defaultScribe || "";
-    if (troopEl) troopEl.value = (cfg.defaultTroop && cfg.defaultTroop.trim() !== "") ? cfg.defaultTroop : "/";
-    if (promotionsEl) promotionsEl.value = "/";
-    if (awardsEl) awardsEl.value = "/";
+    if (troopEl) troopEl.value = cfg.defaultTroop || "";
     if (mercsEl) mercsEl.value = "/";
     if (summaryEl) summaryEl.value = "";
   }
@@ -1956,29 +1984,12 @@ function renderTkRecords() {
   const playerDetailsEl = document.getElementById("record-player-details");
 
   const tpls = getTemplates();
-  const matchesSelectedYear = (dt) => {
+  const logs = (appData.teamkillLogs || []).filter(l => {
+    const cfg = tpls[l.format];
+    if (!cfg || cfg.unit !== "napo") return false;
     if (selectedYear === "all") return true;
-    return Boolean(dt && dt.split("-")[0] === selectedYear);
-  };
-  const isNapoTkEvent = (fmtKey) => {
-    const cfg = tpls[fmtKey];
-    return Boolean(cfg && cfg.unit === "napo" && cfg.trackTeamkills !== false);
-  };
-
-  const logs = (appData.teamkillLogs || []).filter(l => isNapoTkEvent(l.format) && matchesSelectedYear(l.date));
-  const yearProtocols = (appData.protocols || []).filter(p => isNapoTkEvent(p.format) && matchesSelectedYear(p.date));
-
-  const logsByEventKey = new Map();
-  logs.forEach(log => {
-    const evKey = `${log.date || ""}_${log.format || ""}`;
-    if (!logsByEventKey.has(evKey)) logsByEventKey.set(evKey, []);
-    logsByEventKey.get(evKey).push(log);
+    return l.date && l.date.split("-")[0] === selectedYear;
   });
-
-  const allNapoTkEventKeys = new Set([
-    ...yearProtocols.map(p => `${p.date || ""}_${p.format || ""}`),
-    ...logs.map(l => `${l.date || ""}_${l.format || ""}`)
-  ]);
 
   const membersMap = {};
   (appData.members || []).filter(m => m.inNapo).forEach(m => membersMap[m.id] = m);
@@ -1991,68 +2002,51 @@ function renderTkRecords() {
   let bestPlayers = [];
 
   const formatTotals = {};
-  const ensureFormatEntry = (fmtKey) => {
-    if (!formatTotals[fmtKey]) {
-      const cfg = tpls[fmtKey];
-      formatTotals[fmtKey] = { name: cfg ? cfg.name : fmtKey, totalTK: 0, count: 0 };
-    }
-    return formatTotals[fmtKey];
-  };
 
-  yearProtocols.forEach(p => {
-    if (p.format) ensureFormatEntry(p.format);
-  });
-
-  allNapoTkEventKeys.forEach(evKey => {
-    const eventLogs = logsByEventKey.get(evKey) || [];
-    const sampleLog = eventLogs[0];
-    const sampleProto = yearProtocols.find(p => `${p.date || ""}_${p.format || ""}` === evKey);
-    const fmtKey = (sampleLog && sampleLog.format) || (sampleProto && sampleProto.format) || "";
-    const eventDate = (sampleLog && sampleLog.date) || (sampleProto && sampleProto.date) || "";
-    const cfg = tpls[fmtKey];
+  logs.forEach(log => {
+    let eventSum = 0;
+    const cfg = tpls[log.format];
+    const fmtKey = log.format;
     const eventName = cfg ? cfg.name : fmtKey;
 
-    let eventSum = 0;
-    eventLogs.forEach(log => {
-      if (log.records) {
-        for (const [mId, rec] of Object.entries(log.records)) {
-          if (!membersMap[mId]) continue;
-          const c = parseInt(rec.count) || 0;
-          eventSum += c;
-          totalRegimentTK += c;
+    if (!formatTotals[fmtKey]) {
+      formatTotals[fmtKey] = { name: eventName, totalTK: 0, count: 0 };
+    }
 
-          const playerName = membersMap[mId].napoName || "Unbekannt";
-          const dateStr = formatGermanDate(log.date || eventDate);
+    if (log.records) {
+      for (const [mId, rec] of Object.entries(log.records)) {
+        if (!membersMap[mId]) continue;
+        const c = parseInt(rec.count) || 0;
+        eventSum += c;
+        totalRegimentTK += c;
 
-          if (c > maxPlayerTK) {
-            maxPlayerTK = c;
-            bestPlayers = [{ name: playerName, event: eventName, date: dateStr }];
-          } else if (c === maxPlayerTK && c > 0) {
-            if (!bestPlayers.some(p => p.name === playerName && p.event === eventName && p.date === dateStr)) {
-              bestPlayers.push({ name: playerName, event: eventName, date: dateStr });
-            }
+        const playerName = membersMap[mId].napoName || "Unbekannt";
+        const dateStr = formatGermanDate(log.date);
+
+        if (c > maxPlayerTK) {
+          maxPlayerTK = c;
+          bestPlayers = [{ name: playerName, event: eventName, date: dateStr }];
+        } else if (c === maxPlayerTK && c > 0) {
+          if (!bestPlayers.some(p => p.name === playerName && p.event === eventName && p.date === dateStr)) {
+            bestPlayers.push({ name: playerName, event: eventName, date: dateStr });
           }
         }
       }
-    });
-
-    if (fmtKey) {
-      const ft = ensureFormatEntry(fmtKey);
-      ft.totalTK += eventSum;
-      ft.count += 1;
     }
+
+    formatTotals[fmtKey].totalTK += eventSum;
+    formatTotals[fmtKey].count += 1;
 
     if (eventSum > maxEventTK) {
       maxEventTK = eventSum;
-      bestEventLogs = [{ date: eventDate, format: fmtKey }];
+      bestEventLogs = [log];
     } else if (eventSum === maxEventTK && eventSum > 0) {
-      bestEventLogs.push({ date: eventDate, format: fmtKey });
+      bestEventLogs.push(log);
     }
   });
 
-  const totalEventsCount = allNapoTkEventKeys.size;
-  if (totalEventsCount > 0) {
-    const overallAvg = (totalRegimentTK / totalEventsCount).toFixed(2);
+  if (logs.length > 0) {
+    const overallAvg = (totalRegimentTK / logs.length).toFixed(2);
     avgValEl.textContent = `${overallAvg} TKs`;
     
     let detailsHtml = "";
@@ -2324,23 +2318,16 @@ function buildBBCodeFromData(dataObj) {
 
   let bb = `[color=#BF4000][size=150][b]${cfg.titlePrefix} ${dateStr}:[/b][/size][/color]\n\n`;
 
-  const troopDisplay = (troop && troop.trim() !== "") ? troop : "/";
-  const showAwards = Boolean(cfg.hasAwards || cfg.isTraining);
-
   if (cfg.isTraining) {
     bb += `[b]Trainingsleiter:[/b] ${leader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n\n`;
     bb += `[b]Rangaufstiege:[/b] ${promotions}\n`;
-    if (showAwards) bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n`;
-    bb += `\n`;
+    bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
   } else {
     bb += `[b]Leitender Offizier:[/b] ${leader}\n`;
     if (cfg.showSubleader !== false) bb += `[b]Stellv. Offizier:[/b] ${subleader}\n`;
     bb += `[u]Schriftführer:[/u] ${scribe}\n`;
-    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troopDisplay}\n\n`;
-    if (showAwards) {
-      bb += `[b]Erreichte Auszeichnungen:[/b] ${awards}\n\n`;
-    }
+    bb += `[u]Eingesetzte Truppenklasse:[/u] ${troop}\n\n`;
   }
 
   bb += `[b][size=110][color=#0080FF]Anwesende Mitspieler:[/color][/size][/b]\n`;
@@ -2664,39 +2651,32 @@ function copySavedBBCode(id) {
 }
 
 function editProtocol(id) {
-  const p = (appData.protocols || []).find(x => String(x.id) === String(id));
+  const p = (appData.protocols || []).find(x => x.id === id);
   if (!p) return;
 
   const editProtoIdEl = document.getElementById("edit-protocol-id");
   if (editProtoIdEl) editProtoIdEl.value = p.id;
-  const formatEl = document.getElementById("proto-format");
-  if (formatEl && p.format && formatEl.querySelector(`option[value="${p.format}"]`)) {
-    formatEl.value = p.format;
-  } else if (formatEl && p.format) {
-    formatEl.value = p.format;
-  }
+  document.getElementById("proto-format").value = p.format;
   const rawDate = (p.date || "").toString().trim();
   const normalizedDate = rawDate.includes("T") ? rawDate.split("T")[0] : rawDate.slice(0, 10);
   document.getElementById("proto-date").value = normalizedDate;
-  document.getElementById("proto-leader").value = p.leader || "";
+  document.getElementById("proto-leader").value = p.leader;
   if(document.getElementById("proto-subleader")) document.getElementById("proto-subleader").value = p.subleader || "/";
-  document.getElementById("proto-scribe").value = p.scribe || "";
+  document.getElementById("proto-scribe").value = p.scribe;
   if(document.getElementById("proto-troop")) document.getElementById("proto-troop").value = p.troop || "";
   if(document.getElementById("proto-promotions")) document.getElementById("proto-promotions").value = p.promotions || "/";
   if(document.getElementById("proto-awards")) document.getElementById("proto-awards").value = p.awards || "/";
   document.getElementById("proto-mercs").value = p.mercs || "/";
-  document.getElementById("proto-summary").value = p.summary || "";
-  document.getElementById("proto-pos").value = p.pos || "";
-  document.getElementById("proto-neg").value = p.neg || "";
-  document.getElementById("proto-notes").value = p.notes || "";
+  document.getElementById("proto-summary").value = p.summary;
+  document.getElementById("proto-pos").value = p.pos;
+  document.getElementById("proto-neg").value = p.neg;
+  document.getElementById("proto-notes").value = p.notes;
 
   currentAttendance = JSON.parse(JSON.stringify(p.attendance || {}));
   onFormatChange(false);
-
-  const editorNavBtn = document.querySelector(`header nav button[onclick*="switchTab('editor'"]`) || document.querySelector("header nav button");
-  switchTab('editor', editorNavBtn);
   updateEditorModeIndicator();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  switchTab('editor', document.querySelector("nav button"));
   showToast("Protokoll zum Bearbeiten geladen.");
 }
 
@@ -2799,10 +2779,7 @@ function renderStats() {
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
-      legendBox.innerHTML = `
-        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> TK / Spieler</div>
-      `;
+      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:var(--success);"></div> Anwesend</div>
@@ -2917,44 +2894,142 @@ function renderStats() {
       } else if (statsSortCol === 'pres') {
         valA = a.pres;
         valB = b.pres;
-      } else if (statsSortCol === 'exc') {
-        valA = a.exc;
-        valB = b.exc;
-      } else if (statsSortCol === 'unexc') {
-        valA = a.unexc;
-        valB = b.unexc;
-      } else if (statsSortCol === 'rate') {
-        valA = a.rateNum;
-        valB = b.rateNum;
-      }
-      return statsSortAsc ? (valA - valB) : (valB - valA);
-    });
+      let statsChartHoverState = {
+  dataPoints: [],
+  seriesMeta: [],
+  chartMode: "activity",
+  chartType: "bar",
+  paddingLeft: 38,
+  paddingRight: 20,
+  paddingTop: 20,
+  paddingBottom: 30,
+  barGroupWidth: 0,
+  barWidth: 7,
+  maxVal: 5,
+  cssWidth: 600,
+  cssHeight: 200,
+  hoveredIdx: -1
+};
+
+function hideChartTooltip() {
+  const tip = document.getElementById("chart-tooltip");
+  if (tip) {
+    tip.classList.remove("visible");
+  }
+  if (statsChartHoverState.hoveredIdx !== -1) {
+    statsChartHoverState.hoveredIdx = -1;
+  }
+}
+
+function updateChartTooltipPosition(e, point, state) {
+  const tip = document.getElementById("chart-tooltip");
+  const container = document.querySelector(".chart-container");
+  if (!tip || !container || !point) return;
+
+  const cRect = container.getBoundingClientRect();
+  const relX = e.clientX - cRect.left;
+  const relY = e.clientY - cRect.top;
+
+  const eventLabel = point.events && point.events.length > 0
+    ? point.events.map(ev => ev.eventName).filter((v, i, a) => a.indexOf(v) === i).join(", ")
+    : "";
+
+  let rowsHtml = "";
+  if (state.chartMode === "teamkills") {
+    rowsHtml = `
+      <div class="chart-tooltip-row">
+        <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#a855f7;"></span>Teamkills</span>
+        <span class="chart-tooltip-val" style="color:#c084fc;">${point.tk}</span>
+      </div>
+    `;
+  } else {
+    rowsHtml = `
+      <div class="chart-tooltip-row">
+        <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#10b981;"></span>Anwesend</span>
+        <span class="chart-tooltip-val" style="color:#34d399;">${point.pres}</span>
+      </div>
+      <div class="chart-tooltip-row">
+        <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#f59e0b;"></span>Abgemeldet</span>
+        <span class="chart-tooltip-val" style="color:#fbbf24;">${point.exc}</span>
+      </div>
+      <div class="chart-tooltip-row">
+        <span class="chart-tooltip-label"><span class="chart-tooltip-swatch" style="background:#ef4444;"></span>Fehlend</span>
+        <span class="chart-tooltip-val" style="color:#f87171;">${point.unexc}</span>
+      </div>
+    `;
   }
 
-  memberStats.forEach(item => {
-    const rate = item.rateNum;
+  tip.innerHTML = `
+    <div class="chart-tooltip-header">${point.date}${eventLabel ? ` · <span style="font-weight:500; color:var(--text-muted);">${eventLabel}</span>` : ""}</div>
+    ${rowsHtml}
+  `;
 
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><strong>${item.nameLabel}</strong></td>
-      <td>${item.unitBadges}</td>
-      <td style="color:var(--success); font-weight:700;">${item.pres}</td>
-      <td style="color:var(--warning);">${item.exc}</td>
-      <td style="color:var(--danger);">${item.unexc}</td>
-      <td>
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-          <div style="flex:1; background:var(--bg); height:8px; border-radius:4px; overflow:hidden; max-width:100px;">
-            <div style="width:${rate}%; background:var(--primary); height:100%;"></div>
-          </div>
-          <span>${item.total > 0 ? rate + '%' : '-'}</span>
-        </div>
-      </td>
-    `;
-    tbody.appendChild(tr);
+  tip.classList.add("visible");
+
+  const tipWidth = tip.offsetWidth || 160;
+  const tipHeight = tip.offsetHeight || 70;
+  const minCenterX = tipWidth / 2 + 8;
+  const maxCenterX = Math.max(minCenterX, cRect.width - tipWidth / 2 - 8);
+  const clampedX = Math.min(Math.max(relX, minCenterX), maxCenterX);
+
+  let placeBelow = false;
+  let finalY = relY - 10;
+  if (finalY - tipHeight < 6) {
+    placeBelow = true;
+    finalY = relY + 18;
+  }
+
+  tip.style.left = `${clampedX}px`;
+  tip.style.top = `${finalY}px`;
+  tip.style.transform = placeBelow ? "translate(-50%, 0)" : "translate(-50%, -100%)";
+}
+
+function initChartHoverListeners() {
+  const canvas = document.getElementById("attendance-chart");
+  if (!canvas || canvas.dataset.hoverBound === "true") return;
+  canvas.dataset.hoverBound = "true";
+
+  canvas.addEventListener("mousemove", (e) => {
+    const state = statsChartHoverState;
+    if (!state.dataPoints || state.dataPoints.length === 0 || state.barGroupWidth <= 0) {
+      hideChartTooltip();
+      return;
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const chartLeft = state.paddingLeft;
+    const chartRight = state.cssWidth - state.paddingRight;
+    const chartTop = state.paddingTop;
+    const chartBottom = state.cssHeight - state.paddingBottom;
+
+    if (x < chartLeft - 6 || x > chartRight + 6 || y < chartTop - 10 || y > chartBottom + 14) {
+      hideChartTooltip();
+      return;
+    }
+
+    const relX = Math.max(0, Math.min(x - chartLeft, chartRight - chartLeft - 0.001));
+    const idx = Math.floor(relX / state.barGroupWidth);
+    if (idx < 0 || idx >= state.dataPoints.length) {
+      hideChartTooltip();
+      return;
+    }
+
+    state.hoveredIdx = idx;
+    updateChartTooltipPosition(e, state.dataPoints[idx], state);
+  });
+
+  canvas.addEventListener("mouseleave", () => {
+    hideChartTooltip();
   });
 }
 
 function renderStatsChart() {
+  initChartHoverListeners();
+  hideChartTooltip();
+
   const canvas = document.getElementById("attendance-chart");
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -2978,10 +3053,7 @@ function renderStatsChart() {
   const legendBox = document.getElementById("chart-legend-box");
   if (legendBox) {
     if (chartMode === "teamkills") {
-      legendBox.innerHTML = `
-        <div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>
-        <div class="legend-item"><div class="legend-dot" style="background:#f59e0b;"></div> TK / Spieler</div>
-      `;
+      legendBox.innerHTML = `<div class="legend-item"><div class="legend-dot" style="background:#a855f7;"></div> Teamkills</div>`;
     } else {
       legendBox.innerHTML = `
         <div class="legend-item"><div class="legend-dot" style="background:#10b981;"></div> Anwesend</div>
@@ -3017,8 +3089,9 @@ function renderStatsChart() {
     if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${p.date || ""}_${p.format || ""}`;
+    const eventName = (tpls[p.format] && tpls[p.format].name) ? tpls[p.format].name : (p.format || "Event");
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: p.date || "", format: p.format || "", pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: true, hasTk: false };
+      eventsByKey[key] = { date: p.date || "", format: p.format || "", eventName, pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: true, hasTk: false };
     } else {
       eventsByKey[key].hasActivity = true;
     }
@@ -3043,8 +3116,9 @@ function renderStatsChart() {
     if (!matchesStatsFilters(t, filter, yearFilter, dateFrom, dateTo)) return;
 
     const key = `${t.date || ""}_${t.format || ""}`;
+    const eventName = (tpls[t.format] && tpls[t.format].name) ? tpls[t.format].name : (t.format || "Event");
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: t.date || "", format: t.format || "", pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: false, hasTk: true };
+      eventsByKey[key] = { date: t.date || "", format: t.format || "", eventName, pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: false, hasTk: true };
     } else {
       eventsByKey[key].hasTk = true;
     }
@@ -3068,9 +3142,11 @@ function renderStatsChart() {
         unexc: item.unexc,
         tk: item.tk,
         hasActivity: Boolean(item.hasActivity),
-        hasTk: Boolean(item.hasTk)
+        hasTk: Boolean(item.hasTk),
+        events: [{ eventName: item.eventName, pres: item.pres, exc: item.exc, unexc: item.unexc, tk: item.tk }]
       };
     } else {
+      byDate[dt].events.push({ eventName: item.eventName, pres: item.pres, exc: item.exc, unexc: item.unexc, tk: item.tk });
       if (item.hasActivity) {
         if (!byDate[dt].hasActivity || item.pres > byDate[dt].pres || (item.pres === byDate[dt].pres && (item.exc + item.unexc) > (byDate[dt].exc + byDate[dt].unexc))) {
           byDate[dt].pres = item.pres;
@@ -3091,21 +3167,19 @@ function renderStatsChart() {
   const dataPoints = Object.values(byDate)
     .filter(item => chartMode === "teamkills" ? item.hasTk : item.hasActivity)
     .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
-    .map(item => {
-      const tkPerPresent = item.pres > 0 ? Number((item.tk / item.pres).toFixed(2)) : 0;
-      return {
-        date: formatGermanDate(item.date),
-        pres: item.pres,
-        exc: item.exc,
-        unexc: item.unexc,
-        tk: item.tk,
-        tkPerPresent,
-        hasActivity: item.hasActivity,
-        hasTk: item.hasTk
-      };
-    });
+    .map(item => ({
+      date: formatGermanDate(item.date),
+      pres: item.pres,
+      exc: item.exc,
+      unexc: item.unexc,
+      tk: item.tk,
+      hasActivity: item.hasActivity,
+      hasTk: item.hasTk,
+      events: item.events || []
+    }));
 
   if (dataPoints.length === 0) {
+    statsChartHoverState.dataPoints = [];
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "13px sans-serif";
     ctx.textAlign = "center";
@@ -3116,7 +3190,7 @@ function renderStatsChart() {
 
   let maxVal = 5;
   dataPoints.forEach(d => {
-    const m = chartMode === "teamkills" ? Math.max(d.tk, d.tkPerPresent) : Math.max(d.pres, d.unexc);
+    const m = chartMode === "teamkills" ? d.tk : Math.max(d.pres, d.unexc);
     if (m > maxVal) maxVal = m;
   });
 
@@ -3136,8 +3210,7 @@ function renderStatsChart() {
     ctx.lineTo(cssWidth - paddingRight, y);
     ctx.stroke();
 
-    const rawTick = maxVal - (maxVal / 4) * i;
-    const valLabel = chartMode === "teamkills" ? Number(rawTick.toFixed(1)) : Math.round(rawTick);
+    const valLabel = Math.round(maxVal - (maxVal / 4) * i);
     ctx.fillStyle = "#9ba1a6";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "right";
@@ -3145,18 +3218,32 @@ function renderStatsChart() {
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
-  const divisor = chartMode === "teamkills" ? 3.2 : 4;
-  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 11 : 7, (barGroupWidth / divisor) - 1));
+  const divisor = chartMode === "teamkills" ? 2.2 : 4;
+  const barWidth = Math.max(3, Math.min(chartMode === "teamkills" ? 14 : 7, (barGroupWidth / divisor) - 1));
 
   const seriesMeta = chartMode === "teamkills"
-    ? [
-        { key: "tk", color: "#a855f7" },
-        { key: "tkPerPresent", color: "#f59e0b" }
-      ]
+    ? [{ key: "tk", color: "#a855f7" }]
     : [
         { key: "pres", color: "#10b981" },
         { key: "unexc", color: "#ef4444" }
       ];
+
+  statsChartHoverState = {
+    dataPoints,
+    seriesMeta,
+    chartMode,
+    chartType,
+    paddingLeft,
+    paddingRight,
+    paddingTop,
+    paddingBottom,
+    barGroupWidth,
+    barWidth,
+    maxVal,
+    cssWidth,
+    cssHeight,
+    hoveredIdx: -1
+  };
 
   dataPoints.forEach((d, idx) => {
     const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
@@ -3177,6 +3264,46 @@ function renderStatsChart() {
         const h = maxVal > 0 ? (v.val / maxVal) * chartHeight : 0;
         const x = startX + vIdx * (barWidth + 2);
         const y = paddingTop + chartHeight - h;
+
+        ctx.fillStyle = v.color;
+        ctx.fillRect(x, y, barWidth, Math.max(0, h));
+      });
+    }
+  });
+
+  if (chartType === "line") {
+    seriesMeta.forEach(s => {
+      const validPoints = [];
+      dataPoints.forEach((d, idx) => {
+        const hasEventForSeries = chartMode === "teamkills" ? d.hasTk : d.hasActivity;
+        if (!hasEventForSeries) return;
+        const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
+        const val = d[s.key] || 0;
+        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
+        const y = paddingTop + chartHeight - h;
+        validPoints.push({ x: groupX, y });
+      });
+
+      if (validPoints.length > 0) {
+        ctx.strokeStyle = s.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        validPoints.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x, pt.y);
+          else ctx.lineTo(pt.x, pt.y);
+        });
+        ctx.stroke();
+
+        validPoints.forEach(pt => {
+          ctx.fillStyle = s.color;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 3, 0, Math.PI * 2);
+          ctx.fill();
+        });
+      }
+    });
+  }
+}    const y = paddingTop + chartHeight - h;
 
         ctx.fillStyle = v.color;
         ctx.fillRect(x, y, barWidth, Math.max(0, h));
@@ -3401,10 +3528,8 @@ async function saveTemplate() {
   const isTraining = document.getElementById("new-tpl-is-training").value === "true";
   const leader = document.getElementById("new-tpl-leader").value.trim();
   const scribe = document.getElementById("new-tpl-scribe").value.trim();
-  const troopRaw = document.getElementById("new-tpl-troop").value.trim();
-  const troop = troopRaw !== "" ? troopRaw : "/";
+  const troop = document.getElementById("new-tpl-troop").value.trim();
   const trackTK = document.getElementById("new-tpl-track-tk").checked;
-  const hasAwards = document.getElementById("new-tpl-has-awards").checked;
 
   if (!key || !name) {
     alert("Bitte einen gültigen Schlüssel (ID) und Namen angeben.");
@@ -3428,8 +3553,7 @@ async function saveTemplate() {
     defaultLeader: leader,
     defaultScribe: scribe,
     defaultTroop: troop,
-    trackTeamkills: trackTK,
-    hasAwards: hasAwards
+    trackTeamkills: trackTK
   };
 
   cancelEditTemplate();
@@ -3459,9 +3583,8 @@ function editTemplate(key) {
   document.getElementById("new-tpl-is-training").value = cfg.isTraining ? "true" : "false";
   document.getElementById("new-tpl-leader").value = cfg.defaultLeader || "";
   document.getElementById("new-tpl-scribe").value = cfg.defaultScribe || "";
-  document.getElementById("new-tpl-troop").value = (cfg.defaultTroop && cfg.defaultTroop.trim() !== "") ? cfg.defaultTroop : "/";
+  document.getElementById("new-tpl-troop").value = cfg.defaultTroop || "";
   document.getElementById("new-tpl-track-tk").checked = cfg.trackTeamkills === true;
-  document.getElementById("new-tpl-has-awards").checked = Boolean(cfg.hasAwards || cfg.isTraining);
   onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = `Template bearbeiten: ${key}`;
@@ -3483,9 +3606,8 @@ function cancelEditTemplate() {
   document.getElementById("new-tpl-is-training").value = "false";
   document.getElementById("new-tpl-leader").value = "Oberst Darthkiller, Oberst Lama";
   document.getElementById("new-tpl-scribe").value = "Fähnrich Lorenz";
-  document.getElementById("new-tpl-troop").value = "/";
+  document.getElementById("new-tpl-troop").value = "Linieninfanterie";
   document.getElementById("new-tpl-track-tk").checked = false;
-  document.getElementById("new-tpl-has-awards").checked = false;
   onTemplateTypeToggle();
 
   document.getElementById("tpl-form-title").textContent = "Neues Event-Template erstellen";
@@ -3548,7 +3670,6 @@ function renderTemplatesTable() {
       <td>${obligationBadge}</td>
       <td>${unitBadge}</td>
       <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
-      <td>${(cfg.hasAwards || cfg.isTraining) ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}</td>
       <td style="display:flex; gap:0.4rem;">
         <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${key}')">🗑️ Löschen</button>
@@ -3708,28 +3829,10 @@ function generateBriefingReport() {
     });
   }
 
-  const tkTrackableProtocols = filteredProtocols.filter(p => {
-    const cfg = tpls[p.format];
-    return Boolean(cfg && cfg.trackTeamkills !== false);
-  });
-  const tkTrackableLogKeys = new Set(
-    filteredTkLogs
-      .filter(t => {
-        const cfg = tpls[t.format];
-        return Boolean(cfg && cfg.trackTeamkills !== false);
-      })
-      .map(t => `${t.date || ""}_${t.format || ""}`)
-  );
-  const tkEligibleEventKeys = new Set([
-    ...tkTrackableProtocols.map(p => `${p.date || ""}_${p.format || ""}`),
-    ...tkTrackableLogKeys
-  ]);
-  const tkEligibleEventsCount = tkEligibleEventKeys.size;
-
   const avgAttendance = totalEventsCount > 0 ? (totalPresenceSum / totalEventsCount).toFixed(1) : "0.0";
   const avgExcused = totalEventsCount > 0 ? (totalExcusedSum / totalEventsCount).toFixed(1) : "0.0";
   const avgUnexcused = totalEventsCount > 0 ? (totalUnexcusedSum / totalEventsCount).toFixed(1) : "0.0";
-  const avgTeamkills = tkEligibleEventsCount > 0 ? (totalTeamkillsSum / tkEligibleEventsCount).toFixed(1) : "0.0";
+  const avgTeamkills = totalEventsCount > 0 ? (totalTeamkillsSum / totalEventsCount).toFixed(1) : "0.0";
 
   let topMembers = [];
   let maxCount = 0;
@@ -4386,19 +4489,10 @@ function renderMemberEventHistory() {
   const rows = (appData.protocols || [])
     .filter(p => {
       if (eventFilter !== "all" && p.format !== eventFilter) return false;
+      const entry = p.attendance && p.attendance[memberId];
+      if (!entry) return false;
       const pCfg = tpls[p.format];
       const pUnit = pCfg ? pCfg.unit : "napo";
-      const entry = p.attendance && p.attendance[memberId];
-
-      if (!entry) {
-        if (statusFilter !== "missing") return false;
-        if (!selectedMember) return false;
-        if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember)) return false;
-        if (pUnit === "bre" && !selectedMember.inBre) return false;
-        if (pUnit === "napo" && !selectedMember.inNapo) return false;
-        return true;
-      }
-
       if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember) && entry.status !== "present") {
         return false;
       }
@@ -4442,33 +4536,28 @@ function renderMemberEventHistory() {
 
   tbody.innerHTML = "";
   pageRows.forEach(p => {
-    const hasEntry = Boolean(p.attendance && Object.prototype.hasOwnProperty.call(p.attendance, memberId));
-    const entry = hasEntry ? (p.attendance[memberId] || {}) : {};
+    const entry = p.attendance[memberId] || {};
     const cfg = tpls[p.format];
     const eventName = cfg ? cfg.name : p.format;
-    const status = hasEntry ? (entry.status || "unexcused") : "missing";
+    const status = entry.status || "unexcused";
 
     let statusHtml = "";
     if (status === "present") {
       statusHtml = `<span style="color:var(--success); font-weight:600;">Anwesend</span>`;
     } else if (status === "excused") {
       statusHtml = `<span style="color:var(--warning); font-weight:600;">Abgemeldet</span>`;
-    } else if (status === "missing") {
-      statusHtml = `<span style="color:var(--text-muted); font-weight:600; font-style:italic;">Nicht erfasst</span>`;
     } else {
       statusHtml = `<span style="color:var(--danger); font-weight:600;">Unentschuldigt</span>`;
     }
-
-    const actionHtml = hasEntry
-      ? `<button class="btn btn-sm btn-danger" onclick="deleteMemberEventParticipation('${p.id}', '${memberId}')">🗑️ Entfernen</button>`
-      : `<button class="btn btn-sm btn-secondary" onclick="editProtocol('${p.id}')">✏️ Protokoll</button>`;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><strong>${formatGermanDate(p.date)}</strong></td>
       <td>${eventName}</td>
       <td>${statusHtml}</td>
-      <td>${actionHtml}</td>
+      <td>
+        <button class="btn btn-sm btn-danger" onclick="deleteMemberEventParticipation('${p.id}', '${memberId}')">🗑️ Entfernen</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
