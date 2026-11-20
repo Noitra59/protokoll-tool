@@ -833,6 +833,15 @@
               <option value="all">Alle Events</option>
             </select>
           </div>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <label for="stats-member-events-status-filter" style="margin:0;">Status:</label>
+            <select id="stats-member-events-status-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:150px; padding:0.35rem 0.5rem;">
+              <option value="all">Alle Status</option>
+              <option value="present">Anwesend</option>
+              <option value="excused">Abgemeldet</option>
+              <option value="unexcused">Unentschuldigt</option>
+            </select>
+          </div>
           <div style="display:flex; gap:0.4rem; align-items:center;">
             <span id="stats-member-events-page-info" style="font-size:0.85rem; color:var(--text-muted);"></span>
             <label for="stats-member-events-page-select" style="margin:0; font-size:0.85rem;">Seite:</label>
@@ -4242,6 +4251,7 @@ function onMemberEventHistoryPageChange() {
 function renderMemberEventHistory() {
   const memberSelect = document.getElementById("stats-member-events-select");
   const eventSelect = document.getElementById("stats-member-events-filter");
+  const statusSelect = document.getElementById("stats-member-events-status-filter");
   const tbody = document.getElementById("stats-member-events-body");
   const pageSelect = document.getElementById("stats-member-events-page-select");
   const pageInfo = document.getElementById("stats-member-events-page-info");
@@ -4249,6 +4259,7 @@ function renderMemberEventHistory() {
 
   const memberId = memberSelect.value;
   const eventFilter = eventSelect.value || "all";
+  const statusFilter = statusSelect ? (statusSelect.value || "all") : "all";
 
   if (!memberId) {
     if (pageInfo) pageInfo.textContent = "0 Einträge";
@@ -4271,6 +4282,10 @@ function renderMemberEventHistory() {
       const pCfg = tpls[p.format];
       const pUnit = pCfg ? pCfg.unit : "napo";
       if (pUnit === "napo" && isEichenwachtOnlyMember(selectedMember) && entry.status !== "present") {
+        return false;
+      }
+      const entryStatus = entry.status || "unexcused";
+      if (statusFilter !== "all" && entryStatus !== statusFilter) {
         return false;
       }
       return true;
