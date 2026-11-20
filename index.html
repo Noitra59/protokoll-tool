@@ -892,7 +892,7 @@
           <div style="display:flex; gap:0.35rem; align-items:center;">
             <label for="stats-member-events-status-filter" style="margin:0;">Status:</label>
             <select id="stats-member-events-status-filter" onchange="onMemberEventFilterOrSelectChange()" style="width:auto; min-width:150px; padding:0.35rem 0.5rem;">
-              <option value="all">Alle Status</option>
+              <option value="all">Alle</option>
               <option value="present">Anwesend</option>
               <option value="excused">Abgemeldet</option>
               <option value="unexcused">Unentschuldigt</option>
@@ -3800,7 +3800,7 @@ function renderTemplatesTable() {
       <td>${unitBadge}</td>
       <td>${cfg.trackTeamkills ? '<span style="color:var(--success); font-weight:600;">Ja</span>' : '<span style="color:var(--text-muted);">Nein</span>'}${cfg.hasAwards ? '<br><span style="color:#fbbf24; font-size:0.75rem; font-weight:600;">🏅 Auszeichnungen</span>' : ''}</td>
       <td style="display:flex; gap:0.4rem;">
-        <button class="btn btn-sm" onclick="editTemplate('${key}')">✏️ Bearbeiten</button>
+        <button class="btn btn-sm" onclick="editTemplate('${key}')">Bearbeiten</button>
         <button class="btn btn-sm btn-danger" onclick="deleteTemplate('${key}')">🗑️ Löschen</button>
       </td>
     `;
@@ -4715,7 +4715,7 @@ function renderMemberEventHistory() {
       <td>${eventName}</td>
       <td>${statusHtml}</td>
       <td>
-        <button class="btn btn-sm" onclick="editProtocol('${p.id}')">✏️ Bearbeiten</button>
+        <button class="btn btn-sm" onclick="editProtocol('${p.id}')">Bearbeiten</button>
       </td>
     `;
     tbody.appendChild(tr);
