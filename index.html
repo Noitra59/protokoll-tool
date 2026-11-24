@@ -1355,12 +1355,18 @@ function switchTab(tabId, btnElement) {
   if (btnElement) btnElement.classList.add("active");
 
   if (tabId === "teamkills") {
+    const editTkIdEl = document.getElementById("edit-tk-id");
+    const tkDateEl = document.getElementById("tk-date");
+    if (editTkIdEl) editTkIdEl.value = "";
+    if (tkDateEl) tkDateEl.value = new Date().toISOString().split("T")[0];
+    currentTkInputs = {};
+    updateTkEditorModeIndicator();
     updateTkMemberHistoryDropdown();
     renderMemberTkHistory();
     updateTkFormatDropdown();
     updateTkStatsFilterDropdown();
     updateStatsYearDropdown();
-    loadExistingTkForDate();
+    renderTkList();
     renderTkHistory();
     renderTkStats();
     renderTkRecords();
