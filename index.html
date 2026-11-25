@@ -3226,6 +3226,7 @@ function renderStatsChart() {
   const isFormatAllowedForChart = (fmtKey) => {
     const cfg = tpls[fmtKey];
     const unit = cfg ? cfg.unit : ((fmtKey && fmtKey.includes("bre")) ? "bre" : "napo");
+    if (chartMode === "teamkills" && (!cfg || cfg.trackTeamkills === false)) return false;
     if (filter === "bre_all") return unit === "bre";
     if (filter === "napo_all") return unit === "napo";
     if (filter && filter !== "all") return fmtKey === filter;
@@ -3236,15 +3237,17 @@ function renderStatsChart() {
     if (!isFormatAllowedForChart(p.format)) return;
     if (!matchesStatsFilters(p, filter, yearFilter, dateFrom, dateTo)) return;
 
+    const pCfg = tpls[p.format];
+    const canTrackTk = Boolean(pCfg && pCfg.trackTeamkills !== false);
     const key = `${p.date || ""}_${p.format || ""}`;
-    const eventName = (tpls[p.format] && tpls[p.format].name) ? tpls[p.format].name : (p.format || "Event");
+    const eventName = (pCfg && pCfg.name) ? pCfg.name : (p.format || "Event");
     if (!eventsByKey[key]) {
-      eventsByKey[key] = { date: p.date || "", format: p.format || "", eventName, pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: true, hasTk: false };
+      eventsByKey[key] = { date: p.date || "", format: p.format || "", eventName, pres: 0, exc: 0, unexc: 0, tk: 0, hasActivity: true, hasTk: canTrackTk };
     } else {
       eventsByKey[key].hasActivity = true;
+      if (canTrackTk) eventsByKey[key].hasTk = true;
     }
     if (p.attendance) {
-      const pCfg = tpls[p.format];
       const pUnit = pCfg ? pCfg.unit : "napo";
       Object.entries(p.attendance).forEach(([mId, a]) => {
         if (!a) return;
