@@ -3348,15 +3348,27 @@ function renderStatsChart() {
   }
 
   let maxVal = 5;
-  dataPoints.forEach(d => {
-    const m = chartMode === "teamkills"
-      ? Math.max(d.tk, d.hasTkPerPlayer && typeof d.tkPerPlayer === "number" ? d.tkPerPlayer : 0)
-      : Math.max(d.pres, d.unexc);
-    if (m > maxVal) maxVal = m;
-  });
+  let maxRightVal = 1;
+  if (chartMode === "teamkills") {
+    maxVal = 4;
+    maxRightVal = 0.8;
+    dataPoints.forEach(d => {
+      if (d.tk > maxVal) maxVal = d.tk;
+      if (d.hasTkPerPlayer && typeof d.tkPerPlayer === "number" && d.tkPerPlayer > maxRightVal) {
+        maxRightVal = d.tkPerPlayer;
+      }
+    });
+    maxVal = Math.ceil(maxVal / 4) * 4;
+    maxRightVal = Math.max(0.4, Math.ceil(maxRightVal * 5) / 5);
+  } else {
+    dataPoints.forEach(d => {
+      const m = Math.max(d.pres, d.unexc);
+      if (m > maxVal) maxVal = m;
+    });
+  }
 
   const paddingLeft = 38;
-  const paddingRight = 20;
+  const paddingRight = chartMode === "teamkills" ? 42 : 20;
   const paddingTop = 20;
   const paddingBottom = 30;
   const chartWidth = Math.max(50, cssWidth - paddingLeft - paddingRight);
@@ -3372,11 +3384,18 @@ function renderStatsChart() {
     ctx.stroke();
 
     const rawTick = maxVal - (maxVal / 4) * i;
-    const valLabel = chartMode === "teamkills" ? Number(rawTick.toFixed(1)) : Math.round(rawTick);
-    ctx.fillStyle = "#9ba1a6";
+    const valLabel = Math.round(rawTick);
+    ctx.fillStyle = chartMode === "teamkills" ? "#c084fc" : "#9ba1a6";
     ctx.font = "10px sans-serif";
     ctx.textAlign = "right";
     ctx.fillText(String(valLabel), paddingLeft - 8, y + 3);
+
+    if (chartMode === "teamkills") {
+      const rightTick = maxRightVal - (maxRightVal / 4) * i;
+      ctx.fillStyle = "#38bdf8";
+      ctx.textAlign = "left";
+      ctx.fillText(rightTick.toFixed(2), cssWidth - paddingRight + 8, y + 3);
+    }
   }
 
   const barGroupWidth = chartWidth / dataPoints.length;
@@ -3385,12 +3404,12 @@ function renderStatsChart() {
 
   const seriesMeta = chartMode === "teamkills"
     ? [
-        { key: "tk", color: "#a855f7" },
-        { key: "tkPerPlayer", color: "#38bdf8" }
+        { key: "tk", color: "#a855f7", scaleMax: maxVal },
+        { key: "tkPerPlayer", color: "#38bdf8", scaleMax: maxRightVal }
       ]
     : [
-        { key: "pres", color: "#10b981" },
-        { key: "unexc", color: "#ef4444" }
+        { key: "pres", color: "#10b981", scaleMax: maxVal },
+        { key: "unexc", color: "#ef4444", scaleMax: maxVal }
       ];
 
   statsChartHoverState = {
@@ -3422,12 +3441,12 @@ function renderStatsChart() {
 
     if (chartType === "bar") {
       const activeSeries = seriesMeta.filter(s => !(chartMode === "teamkills" && s.key === "tkPerPlayer" && !d.hasTkPerPlayer));
-      const values = activeSeries.map(s => ({ val: d[s.key] || 0, color: s.color }));
+      const values = activeSeries.map(s => ({ val: d[s.key] || 0, color: s.color, scaleMax: s.scaleMax }));
       const totalGroupW = values.length * (barWidth + 2);
       const startX = groupX - (totalGroupW / 2);
 
       values.forEach((v, vIdx) => {
-        const h = maxVal > 0 ? (v.val / maxVal) * chartHeight : 0;
+        const h = v.scaleMax > 0 ? (v.val / v.scaleMax) * chartHeight : 0;
         const x = startX + vIdx * (barWidth + 2);
         const y = paddingTop + chartHeight - h;
 
@@ -3447,7 +3466,7 @@ function renderStatsChart() {
         if (!hasEventForSeries) return;
         const groupX = paddingLeft + idx * barGroupWidth + (barGroupWidth / 2);
         const val = d[s.key] || 0;
-        const h = maxVal > 0 ? (val / maxVal) * chartHeight : 0;
+        const h = s.scaleMax > 0 ? (val / s.scaleMax) * chartHeight : 0;
         const y = paddingTop + chartHeight - h;
         validPoints.push({ x: groupX, y });
       });
