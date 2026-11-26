@@ -370,15 +370,82 @@
     z-index: 1000;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* Passwort-Sperrbildschirm (Login Overlay) */
+  .auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(12, 14, 17, 0.96);
+    backdrop-filter: blur(6px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 1rem;
+  }
+  .auth-overlay.active {
+    display: flex;
+  }
+  .auth-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  }
+  .auth-card h2 {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+  }
+  .auth-card p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+  }
+  .auth-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #f87171;
+    font-size: 0.82rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .auth-error.show {
+    display: block;
+  }
+
 </style>
 </head>
 <body>
+
+<div id="auth-overlay" class="auth-overlay">
+  <div class="auth-card">
+    <h2>🔒 Zugang geschützt</h2>
+    <p>Bitte gib das Passwort für das k.k. Protokoll-Tool ein, um die Cloud-Daten zu laden und zu bearbeiten.</p>
+    <div id="auth-error-msg" class="auth-error">Falsches Passwort. Bitte erneut versuchen.</div>
+    <form onsubmit="submitAppPassword(event)">
+      <div class="form-group">
+        <label for="app-password-input">Passwort</label>
+        <input type="password" id="app-password-input" placeholder="Passwort eingeben..." autocomplete="current-password" required style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.6rem 0.75rem; border-radius:var(--radius); font-size:0.95rem;">
+      </div>
+      <button type="submit" id="auth-submit-btn" class="btn btn-success" style="width:100%; justify-content:center;">Anmelden</button>
+    </form>
+  </div>
+</div>
+
+
 
 <header>
   <div class="header-left">
     <h1>📜 k.k. Protokoll-Generator</h1>
     <span id="sync-badge" class="sync-status">🔄 Lade Cloud-Daten...</span>
     <button class="btn btn-sm btn-secondary" onclick="loadFromCloud(true)">↻ Sync</button>
+    <button class="btn btn-sm btn-secondary" onclick="logoutAppPassword()" title="Passwort abmelden / ändern">🔒 Sperren</button>
   </div>
   <nav>
     <button class="active" onclick="switchTab('editor', this)">Protokoll</button>
@@ -1103,6 +1170,75 @@
 <script>
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweeJaENqdUkTextMxAjW27aQFgurXdxtU7DW9DhAx1oVCizxlS-2KV-IiuNAo1rCo/exec";
 
+const AUTH_STORAGE_KEY = "kk_protocol_app_password_v1";
+
+function getStoredAppPassword() {
+  try {
+    return localStorage.getItem(AUTH_STORAGE_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+}
+
+function setStoredAppPassword(pw) {
+  try {
+    if (pw) localStorage.setItem(AUTH_STORAGE_KEY, pw);
+    else localStorage.removeItem(AUTH_STORAGE_KEY);
+  } catch (e) {}
+}
+
+function showPasswordModal(errorMessage = "") {
+  const overlay = document.getElementById("auth-overlay");
+  const errEl = document.getElementById("auth-error-msg");
+  const inputEl = document.getElementById("app-password-input");
+  if (overlay) overlay.classList.add("active");
+  if (errEl) {
+    if (errorMessage) {
+      errEl.textContent = errorMessage;
+      errEl.classList.add("show");
+    } else {
+      errEl.classList.remove("show");
+    }
+  }
+  if (inputEl) {
+    inputEl.value = "";
+    setTimeout(() => inputEl.focus(), 50);
+  }
+}
+
+function hidePasswordModal() {
+  const overlay = document.getElementById("auth-overlay");
+  const errEl = document.getElementById("auth-error-msg");
+  if (overlay) overlay.classList.remove("active");
+  if (errEl) errEl.classList.remove("show");
+}
+
+async function submitAppPassword(e) {
+  if (e) e.preventDefault();
+  const inputEl = document.getElementById("app-password-input");
+  const btnEl = document.getElementById("auth-submit-btn");
+  const pw = inputEl ? inputEl.value.trim() : "";
+  if (!pw) return;
+
+  if (btnEl) {
+    btnEl.disabled = true;
+    btnEl.textContent = "Prüfe Passwort...";
+  }
+  setStoredAppPassword(pw);
+  await loadFromCloud(true);
+  if (btnEl) {
+    btnEl.disabled = false;
+    btnEl.textContent = "Anmelden";
+  }
+}
+
+function logoutAppPassword() {
+  setStoredAppPassword("");
+  setSyncStatus("err", "🔒 Abgemeldet");
+  showPasswordModal("");
+}
+
+
 const DEFAULT_TEMPLATES = {
   tue_hli: {
     name: "Dienstag – HLI Linebattle",
@@ -1202,8 +1338,17 @@ async function loadFromCloud(manual = false) {
     if (rawLocal) localBackupData = JSON.parse(rawLocal);
   } catch (e) {}
 
+  const currentPw = getStoredAppPassword();
+  if (!currentPw) {
+    clearTimeout(timeoutId);
+    setSyncStatus("err", "🔒 Passwort erforderlich");
+    showPasswordModal("");
+    return;
+  }
+
   try {
-    const cacheBustUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?") + "t=" + Date.now();
+    const sep = GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?";
+    const cacheBustUrl = `${GOOGLE_SCRIPT_URL}${sep}action=getAll&password=${encodeURIComponent(currentPw)}&t=${Date.now()}`;
     const response = await fetch(cacheBustUrl, {
       method: "GET",
       redirect: "follow",
@@ -1221,6 +1366,15 @@ async function loadFromCloud(manual = false) {
     } catch (parseErr) {
       throw new Error("Ungültige JSON-Antwort (evtl. Google-Login/HTML statt JSON)");
     }
+
+    if (data && (data.code === "UNAUTHORIZED" || (data.status === "error" && /passwort/i.test(data.message || "")))) {
+      setStoredAppPassword("");
+      setSyncStatus("err", "🔒 Falsches Passwort");
+      showPasswordModal(data.message || "Falsches Passwort. Bitte erneut eingeben.");
+      return;
+    }
+
+    hidePasswordModal();
 
     if (data) {
       const cloudProtocols = Array.isArray(data.protocols) ? data.protocols : [];
@@ -1330,8 +1484,16 @@ async function saveToCloud(customPayload = null) {
   setSyncStatus("loading", "🔄 Speichere in Cloud...");
 
   const runSave = async () => {
+    const currentPw = getStoredAppPassword();
+    if (!currentPw) {
+      setSyncStatus("err", "🔒 Passwort erforderlich");
+      showPasswordModal("Bitte zuerst das Passwort eingeben.");
+      return;
+    }
+
     localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
-    const payloadObj = customPayload || { action: "saveAll", data: appData };
+    const basePayload = customPayload || { action: "saveAll", data: appData };
+    const payloadObj = Object.assign({}, basePayload, { password: currentPw });
     const payload = JSON.stringify(payloadObj);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
@@ -1351,6 +1513,12 @@ async function saveToCloud(customPayload = null) {
       const resText = await postRes.text();
       let resJson = null;
       try { resJson = JSON.parse(resText); } catch (e) {}
+      if (resJson && (resJson.code === "UNAUTHORIZED" || (resJson.status === "error" && /passwort/i.test(resJson.message || "")))) {
+        setStoredAppPassword("");
+        setSyncStatus("err", "🔒 Falsches Passwort");
+        showPasswordModal(resJson.message || "Falsches Passwort. Bitte erneut eingeben.");
+        return;
+      }
       if (resJson && resJson.status === "error") {
         throw new Error(resJson.message || "Apps Script Fehler");
       }
