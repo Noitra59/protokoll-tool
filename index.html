@@ -1510,14 +1510,10 @@ async function loadFromCloud(manual = false) {
       isEditorAuthenticated = false;
       setStoredAppPassword("");
       applyAuthModeUI();
-      if (currentPw) {
-        const fallbackUrl = `${GOOGLE_SCRIPT_URL}${sep}action=getAll&t=${Date.now()}`;
-        const fbRes = await fetch(fallbackUrl, { method: "GET", redirect: "follow", cache: "no-store" });
-        if (fbRes.ok) {
-          try { data = JSON.parse(await fbRes.text()); } catch (e) { data = null; }
-        } else {
-          data = null;
-        }
+      const fallbackUrl = `${GOOGLE_SCRIPT_URL}${sep}action=getAll&t=${Date.now()}`;
+      const fbRes = await fetch(fallbackUrl, { method: "GET", redirect: "follow", cache: "no-store" });
+      if (fbRes.ok) {
+        try { data = JSON.parse(await fbRes.text()); } catch (e) { data = null; }
       } else {
         data = null;
       }
