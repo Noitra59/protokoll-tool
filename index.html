@@ -419,21 +419,91 @@
     display: block;
   }
 
+
+  .role-badge {
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+  .role-badge.readonly {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(245, 158, 11, 0.35);
+  }
+  .role-badge.editor {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
+  .readonly-banner {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.35);
+    color: #fcd34d;
+    padding: 0.65rem 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1.25rem;
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.88rem;
+  }
+  body.is-readonly .readonly-banner {
+    display: flex;
+  }
+
+  /* Im Read-Only-Modus bleiben Filter, Diagramme, BBCode-Kopieren und Verlauf-Ansicht nutzbar */
+  body.is-readonly input:not([type="checkbox"]):not([type="radio"]):not([type="date"]),
+  body.is-readonly textarea:not(#bbcode-output):not(#import-bbcode-input),
+  body.is-readonly select:not(#history-event-filter):not(#history-page-select):not(#tk-member-history-select):not(#tk-stats-filter):not(#tk-stats-year-filter):not(#stats-filter):not(#stats-year-filter):not(#stats-chart-type):not(#stats-chart-mode):not(#stats-display-mode):not(#stats-member-events-select):not(#stats-member-events-filter):not(#stats-member-events-status-filter):not(#stats-member-events-page-select) {
+    pointer-events: none;
+    opacity: 0.72;
+  }
+  body.is-readonly input[type="checkbox"],
+  body.is-readonly input[type="radio"] {
+    pointer-events: none;
+    opacity: 0.75;
+  }
+  body.is-readonly button[onclick*="save"],
+  body.is-readonly button[onclick*="Save"],
+  body.is-readonly button[onclick*="delete"],
+  body.is-readonly button[onclick*="Delete"],
+  body.is-readonly button[onclick*="addMember"],
+  body.is-readonly button[onclick*="moveMember"],
+  body.is-readonly button[onclick*="moveTemplate"],
+  body.is-readonly button[onclick*="toggleMemberActive"],
+  body.is-readonly button[onclick*="confirmBBCodeImport"],
+  body.is-readonly button[onclick*="editProtocol"],
+  body.is-readonly button[onclick*="editTkLog"],
+  body.is-readonly button[onclick*="editTemplate"] {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+  }
+
 </style>
 </head>
 <body>
 
-<div id="auth-overlay" class="auth-overlay">
+<div id="auth-overlay" class="auth-overlay" onclick="if(event.target===this) hidePasswordModal()">
   <div class="auth-card">
-    <h2>🔒 Zugang geschützt</h2>
-    <p>Bitte gib das Passwort für das k.k. Protokoll-Tool ein, um die Cloud-Daten zu laden und zu bearbeiten.</p>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+      <h2 style="margin:0;">🔑 Bearbeitungs-Login</h2>
+      <button type="button" class="btn btn-sm btn-secondary" onclick="hidePasswordModal()" title="In Leseansicht bleiben">✕</button>
+    </div>
+    <p>Ohne Anmeldung kannst du alle Daten einsehen. Für Änderungen und Speichern gib bitte das Passwort ein.</p>
     <div id="auth-error-msg" class="auth-error">Falsches Passwort. Bitte erneut versuchen.</div>
     <form onsubmit="submitAppPassword(event)">
       <div class="form-group">
         <label for="app-password-input">Passwort</label>
         <input type="password" id="app-password-input" placeholder="Passwort eingeben..." autocomplete="current-password" required style="width:100%; background:var(--bg); border:1px solid var(--border); color:var(--text); padding:0.6rem 0.75rem; border-radius:var(--radius); font-size:0.95rem;">
       </div>
-      <button type="submit" id="auth-submit-btn" class="btn btn-success" style="width:100%; justify-content:center;">Anmelden</button>
+      <div style="display:flex; gap:0.5rem;">
+        <button type="button" class="btn btn-secondary" onclick="hidePasswordModal()" style="flex:1; justify-content:center;">Nur ansehen</button>
+        <button type="submit" id="auth-submit-btn" class="btn btn-success" style="flex:1; justify-content:center;">Anmelden</button>
+      </div>
     </form>
   </div>
 </div>
@@ -445,7 +515,8 @@
     <h1>📜 k.k. Protokoll-Generator</h1>
     <span id="sync-badge" class="sync-status">🔄 Lade Cloud-Daten...</span>
     <button class="btn btn-sm btn-secondary" onclick="loadFromCloud(true)">↻ Sync</button>
-    <button class="btn btn-sm btn-secondary" onclick="logoutAppPassword()" title="Passwort abmelden / ändern">🔒 Sperren</button>
+    <span id="role-badge" class="role-badge readonly">👁️ Leseansicht</span>
+    <button id="header-auth-btn" class="btn btn-sm" onclick="handleHeaderAuthClick()">🔑 Bearbeiten (Login)</button>
   </div>
   <nav>
     <button class="active" onclick="switchTab('editor', this)">Protokoll</button>
@@ -459,6 +530,11 @@
 </header>
 
 <main>
+<div id="readonly-banner" class="readonly-banner">
+  <div><strong>👁️ Leseansicht aktiv:</strong> Du kannst alle Protokolle, Teamkills und Statistiken ansehen. Änderungen sind erst nach Passwort-Login möglich.</div>
+  <button type="button" class="btn btn-sm btn-success" onclick="showPasswordModal('')">🔑 Passwort eingeben</button>
+</div>
+
   <!-- TAB 1: EDITOR (PROTOKOLL) -->
   <div id="tab-editor" class="tab-content active">
     <div class="grid-2">
@@ -1171,6 +1247,7 @@
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbweeJaENqdUkTextMxAjW27aQFgurXdxtU7DW9DhAx1oVCizxlS-2KV-IiuNAo1rCo/exec";
 
 const AUTH_STORAGE_KEY = "kk_protocol_app_password_v1";
+let isEditorAuthenticated = false;
 
 function getStoredAppPassword() {
   try {
@@ -1185,6 +1262,38 @@ function setStoredAppPassword(pw) {
     if (pw) localStorage.setItem(AUTH_STORAGE_KEY, pw);
     else localStorage.removeItem(AUTH_STORAGE_KEY);
   } catch (e) {}
+}
+
+function applyAuthModeUI() {
+  const badge = document.getElementById("role-badge");
+  const authBtn = document.getElementById("header-auth-btn");
+  if (isEditorAuthenticated) {
+    document.body.classList.remove("is-readonly");
+    if (badge) {
+      badge.className = "role-badge editor";
+      badge.textContent = "✏️ Bearbeitungsmodus";
+    }
+    if (authBtn) {
+      authBtn.className = "btn btn-sm btn-secondary";
+      authBtn.textContent = "🔒 Abmelden";
+    }
+  } else {
+    document.body.classList.add("is-readonly");
+    if (badge) {
+      badge.className = "role-badge readonly";
+      badge.textContent = "👁️ Leseansicht";
+    }
+    if (authBtn) {
+      authBtn.className = "btn btn-sm";
+      authBtn.textContent = "🔑 Bearbeiten (Login)";
+    }
+  }
+}
+
+function ensureCanEdit(actionLabel = "Diese Aktion") {
+  if (isEditorAuthenticated) return true;
+  showPasswordModal(`${actionLabel} ist nur mit Passwort möglich. Du kannst aber weiterhin alles in der Leseansicht ansehen.`);
+  return false;
 }
 
 function showPasswordModal(errorMessage = "") {
@@ -1213,6 +1322,14 @@ function hidePasswordModal() {
   if (errEl) errEl.classList.remove("show");
 }
 
+function handleHeaderAuthClick() {
+  if (isEditorAuthenticated) {
+    logoutAppPassword();
+  } else {
+    showPasswordModal("");
+  }
+}
+
 async function submitAppPassword(e) {
   if (e) e.preventDefault();
   const inputEl = document.getElementById("app-password-input");
@@ -1225,17 +1342,47 @@ async function submitAppPassword(e) {
     btnEl.textContent = "Prüfe Passwort...";
   }
   setStoredAppPassword(pw);
-  await loadFromCloud(true);
+  const ok = await verifyPasswordWithCloud(pw);
+  if (ok) {
+    isEditorAuthenticated = true;
+    applyAuthModeUI();
+    hidePasswordModal();
+    await loadFromCloud(true);
+    showToast("Bearbeitungsmodus aktiviert!");
+  } else {
+    isEditorAuthenticated = false;
+    setStoredAppPassword("");
+    applyAuthModeUI();
+    showPasswordModal("Falsches Passwort. Bitte erneut versuchen.");
+  }
   if (btnEl) {
     btnEl.disabled = false;
     btnEl.textContent = "Anmelden";
   }
 }
 
+async function verifyPasswordWithCloud(pw) {
+  try {
+    const sep = GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?";
+    const url = `${GOOGLE_SCRIPT_URL}${sep}action=checkAuth&password=${encodeURIComponent(pw)}&t=${Date.now()}`;
+    const res = await fetch(url, { method: "GET", redirect: "follow", cache: "no-store" });
+    const txt = await res.text();
+    let json = null;
+    try { json = JSON.parse(txt); } catch (e) {}
+    if (json && (json.code === "UNAUTHORIZED" || json.authorized === false || (json.status === "error" && /passwort|auth/i.test(json.message || "")))) {
+      return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 function logoutAppPassword() {
+  isEditorAuthenticated = false;
   setStoredAppPassword("");
-  setSyncStatus("err", "🔒 Abgemeldet");
-  showPasswordModal("");
+  applyAuthModeUI();
+  showToast("Abgemeldet – jetzt in Leseansicht.");
 }
 
 
@@ -1339,16 +1486,11 @@ async function loadFromCloud(manual = false) {
   } catch (e) {}
 
   const currentPw = getStoredAppPassword();
-  if (!currentPw) {
-    clearTimeout(timeoutId);
-    setSyncStatus("err", "🔒 Passwort erforderlich");
-    showPasswordModal("");
-    return;
-  }
 
   try {
     const sep = GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?";
-    const cacheBustUrl = `${GOOGLE_SCRIPT_URL}${sep}action=getAll&password=${encodeURIComponent(currentPw)}&t=${Date.now()}`;
+    const pwParam = currentPw ? `&password=${encodeURIComponent(currentPw)}` : "";
+    const cacheBustUrl = `${GOOGLE_SCRIPT_URL}${sep}action=getAll${pwParam}&t=${Date.now()}`;
     const response = await fetch(cacheBustUrl, {
       method: "GET",
       redirect: "follow",
@@ -1368,13 +1510,24 @@ async function loadFromCloud(manual = false) {
     }
 
     if (data && (data.code === "UNAUTHORIZED" || (data.status === "error" && /passwort/i.test(data.message || "")))) {
+      isEditorAuthenticated = false;
       setStoredAppPassword("");
-      setSyncStatus("err", "🔒 Falsches Passwort");
-      showPasswordModal(data.message || "Falsches Passwort. Bitte erneut eingeben.");
-      return;
+      applyAuthModeUI();
+      if (currentPw) {
+        const fallbackUrl = `${GOOGLE_SCRIPT_URL}${sep}action=getAll&t=${Date.now()}`;
+        const fbRes = await fetch(fallbackUrl, { method: "GET", redirect: "follow", cache: "no-store" });
+        if (fbRes.ok) {
+          try { data = JSON.parse(await fbRes.text()); } catch (e) { data = null; }
+        } else {
+          data = null;
+        }
+      } else {
+        data = null;
+      }
+    } else if (currentPw) {
+      isEditorAuthenticated = true;
     }
-
-    hidePasswordModal();
+    applyAuthModeUI();
 
     if (data) {
       const cloudProtocols = Array.isArray(data.protocols) ? data.protocols : [];
@@ -2078,6 +2231,7 @@ function setTkCount(id, val) {
 }
 
 async function saveTeamkillLog() {
+  if (!ensureCanEdit("Das Speichern von Teamkills")) return;
   const tkFormatEl = document.getElementById("tk-format");
   const tkDateEl = document.getElementById("tk-date");
   const editTkIdEl = document.getElementById("edit-tk-id");
@@ -2178,6 +2332,7 @@ function renderTkHistory() {
 }
 
 async function updateTkLogFormat(logId, newFormat) {
+  if (!ensureCanEdit("Das Ändern des Event-Formats")) return;
   const log = (appData.teamkillLogs || []).find(t => t.id === logId);
   if (!log) return;
   log.format = newFormat;
@@ -2520,6 +2675,7 @@ function editTkLog(id) {
 }
 
 async function deleteTkLog(id) {
+  if (!ensureCanEdit("Das Löschen von Teamkills")) return;
   if (!confirm("Diesen Teamkill-Eintrag wirklich löschen?")) return;
   appData.teamkillLogs = (appData.teamkillLogs || []).filter(t => String(t.id) !== String(id));
   await saveToCloud({ action: "deleteTeamkillLog", logId: id });
@@ -2700,6 +2856,7 @@ function copyBBCode() {
 }
 
 async function saveProtocol() {
+  if (!ensureCanEdit("Das Speichern von Protokollen")) return;
   const formatEl = document.getElementById("proto-format");
   if (!formatEl) return;
   const fmtKey = formatEl.value;
@@ -2945,6 +3102,7 @@ function copySavedBBCode(id) {
 }
 
 function editProtocol(id) {
+  if (!ensureCanEdit("Das Bearbeiten von Protokollen")) return;
   const p = (appData.protocols || []).find(x => x.id === id);
   if (!p) return;
 
@@ -2976,6 +3134,7 @@ function editProtocol(id) {
 }
 
 async function deleteProtocol(id) {
+  if (!ensureCanEdit("Das Löschen von Protokollen")) return;
   if (!confirm("Dieses Protokoll wirklich löschen?")) return;
   appData.protocols = (appData.protocols || []).filter(p => String(p.id) !== String(id));
   await saveToCloud({ action: "deleteEvent", eventId: id });
@@ -3768,6 +3927,7 @@ function renderMembers() {
 }
 
 async function moveMember(index, direction) {
+  if (!ensureCanEdit("Das Verschieben von Mitgliedern")) return;
   const newIndex = index + direction;
   if (newIndex < 0 || newIndex >= appData.members.length) return;
 
@@ -3788,6 +3948,7 @@ async function moveMember(index, direction) {
 }
 
 async function addMember() {
+  if (!ensureCanEdit("Das Hinzufügen von Mitgliedern")) return;
   const napo = document.getElementById("new-member-napo").value.trim();
   const bre = document.getElementById("new-member-bre").value.trim();
   const inNapo = document.getElementById("new-member-is-napo").checked;
@@ -3825,6 +3986,7 @@ async function addMember() {
 }
 
 async function updateMember(id, field, value) {
+  if (!ensureCanEdit("Das Bearbeiten von Mitgliedern")) return;
   const m = (appData.members || []).find(x => x.id === id);
   if (m) {
     m[field] = value;
@@ -3862,6 +4024,7 @@ async function updateMember(id, field, value) {
 }
 
 async function toggleMemberActive(id) {
+  if (!ensureCanEdit("Das Ändern des Mitgliedsstatus")) return;
   const m = (appData.members || []).find(x => x.id === id);
   if (m) {
     m.active = !m.active;
@@ -3875,6 +4038,7 @@ async function toggleMemberActive(id) {
 }
 
 async function deleteMember(id) {
+  if (!ensureCanEdit("Das Löschen von Mitgliedern")) return;
   const m = (appData.members || []).find(x => x.id === id);
   const name = m ? (m.napoName || m.breName || "Dieses Mitglied") : "Dieses Mitglied";
   
@@ -3894,6 +4058,7 @@ async function deleteMember(id) {
 }
 
 async function saveTemplate() {
+  if (!ensureCanEdit("Das Speichern von Templates")) return;
   const originalKey = document.getElementById("edit-tpl-original-key").value.trim();
   const key = document.getElementById("new-tpl-key").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
   const name = document.getElementById("new-tpl-name").value.trim();
@@ -3945,6 +4110,7 @@ async function saveTemplate() {
 }
 
 function editTemplate(key) {
+  if (!ensureCanEdit("Das Bearbeiten von Templates")) return;
   const tpls = getTemplates();
   const cfg = tpls[key];
   if (!cfg) return;
@@ -3999,6 +4165,7 @@ function cancelEditTemplate() {
 }
 
 async function deleteTemplate(key) {
+  if (!ensureCanEdit("Das Löschen von Templates")) return;
   const tpls = getTemplates();
   if (Object.keys(tpls).length <= 1) {
     alert("Es muss mindestens ein Template erhalten bleiben.");
@@ -4063,6 +4230,7 @@ function renderTemplatesTable() {
 }
 
 async function moveTemplate(index, direction) {
+  if (!ensureCanEdit("Das Verschieben von Templates")) return;
   const tpls = getTemplates();
   const entries = Object.entries(tpls);
   const newIndex = index + direction;
@@ -4750,6 +4918,7 @@ function onManualUnmatchedAssign(encodedKey, status, encodedName, encodedNote, m
 }
 
 async function confirmBBCodeImport() {
+  if (!ensureCanEdit("Das Importieren von Protokollen")) return;
   if (!parsedImportRaw || !parsedImportReady) return;
 
   const fmtKey = document.getElementById("import-preview-format").value;
@@ -4977,6 +5146,7 @@ function renderMemberEventHistory() {
 }
 
 async function deleteMemberEventParticipation(protocolId, memberId) {
+  if (!ensureCanEdit("Das Entfernen von Teilnahmen")) return;
   const proto = (appData.protocols || []).find(p => String(p.id) === String(protocolId));
   if (!proto || !proto.attendance || !Object.prototype.hasOwnProperty.call(proto.attendance, memberId)) {
     return;
@@ -5046,6 +5216,7 @@ window.addEventListener("resize", () => {
   }
 });
 
+applyAuthModeUI();
 initEditor();
 loadFromCloud();
 </script>
