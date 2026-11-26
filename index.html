@@ -437,24 +437,6 @@
     border: 1px solid rgba(16, 185, 129, 0.35);
   }
 
-  .readonly-banner {
-    background: rgba(245, 158, 11, 0.12);
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    color: #fcd34d;
-    padding: 0.65rem 1rem;
-    border-radius: var(--radius);
-    margin-bottom: 1.25rem;
-    display: none;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
-    font-size: 0.88rem;
-  }
-  body.is-readonly .readonly-banner {
-    display: flex;
-  }
-
   /* Im Read-Only-Modus bleiben Filter, Diagramme, BBCode-Kopieren und Verlauf-Ansicht nutzbar */
   body.is-readonly input:not([type="checkbox"]):not([type="radio"]):not([type="date"]):not(#app-password-input),
   body.is-readonly textarea:not(#bbcode-output):not(#import-bbcode-input),
@@ -530,10 +512,6 @@
 </header>
 
 <main>
-<div id="readonly-banner" class="readonly-banner">
-  <div><strong>👁️ Leseansicht aktiv:</strong> Du kannst alle Protokolle, Teamkills und Statistiken ansehen. Änderungen sind erst nach Passwort-Login möglich.</div>
-  <button type="button" class="btn btn-sm btn-success" onclick="showPasswordModal('')">🔑 Passwort eingeben</button>
-</div>
 
   <!-- TAB 1: EDITOR (PROTOKOLL) -->
   <div id="tab-editor" class="tab-content active">
