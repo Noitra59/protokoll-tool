@@ -456,7 +456,7 @@
   }
 
   /* Im Read-Only-Modus bleiben Filter, Diagramme, BBCode-Kopieren und Verlauf-Ansicht nutzbar */
-  body.is-readonly input:not([type="checkbox"]):not([type="radio"]):not([type="date"]),
+  body.is-readonly input:not([type="checkbox"]):not([type="radio"]):not([type="date"]):not(#app-password-input),
   body.is-readonly textarea:not(#bbcode-output):not(#import-bbcode-input),
   body.is-readonly select:not(#history-event-filter):not(#history-page-select):not(#tk-member-history-select):not(#tk-stats-filter):not(#tk-stats-year-filter):not(#stats-filter):not(#stats-year-filter):not(#stats-chart-type):not(#stats-chart-mode):not(#stats-display-mode):not(#stats-member-events-select):not(#stats-member-events-filter):not(#stats-member-events-status-filter):not(#stats-member-events-page-select) {
     pointer-events: none;
