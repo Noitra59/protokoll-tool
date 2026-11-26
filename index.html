@@ -1526,14 +1526,7 @@ async function loadFromCloud(manual = false) {
     }
     applyAuthModeUI();
 
-    const hasCloudPayload = data && (
-      Array.isArray(data.protocols) ||
-      Array.isArray(data.teamkillLogs) ||
-      Array.isArray(data.members) ||
-      (data.templates && typeof data.templates === "object")
-    );
-
-    if (hasCloudPayload) {
+    if (data && data.status === "success") {
       const cloudProtocols = Array.isArray(data.protocols) ? data.protocols : [];
       const localProtocols = (localBackupData && Array.isArray(localBackupData.protocols)) ? localBackupData.protocols : [];
       const mergedProtocols = mergeByIdSafe(cloudProtocols, localProtocols, true);
@@ -1561,7 +1554,7 @@ async function loadFromCloud(manual = false) {
       appData.members = mergedMembers;
       appData.templates = Object.keys(mergedTemplates).length > 0 ? mergedTemplates : { ...DEFAULT_TEMPLATES };
 
-      if ((hadLocalOnlyProtocols || hadLocalOnlyTkLogs || hadLocalOnlyMembers || hadLocalOnlyTemplates) && isEditorAuthenticated && getStoredAppPassword()) {
+      if (hadLocalOnlyProtocols || hadLocalOnlyTkLogs || hadLocalOnlyMembers || hadLocalOnlyTemplates) {
         saveToCloud();
       }
       const localEvMap = getLocalExcusedEventsMap();
@@ -1575,15 +1568,6 @@ async function loadFromCloud(manual = false) {
       });
       setSyncStatus("ok", "☁️ Google Sheets verbunden");
       if (manual) showToast("Daten erfolgreich aktualisiert!");
-    } else if (data && data.status === "error") {
-      setSyncStatus("err", "⚠️ Cloud-Fehler: " + (data.message || "Zugriff verweigert"));
-      if (localBackupData) {
-        appData = localBackupData;
-      }
-      if (!appData.teamkillLogs) appData.teamkillLogs = [];
-      if (!appData.templates || Object.keys(appData.templates).length === 0) {
-        appData.templates = { ...DEFAULT_TEMPLATES };
-      }
     }
   } catch (err) {
     setSyncStatus("err", "⚠️ Cloud-Fehler: " + (err && err.message ? err.message : "nicht erreichbar"));
@@ -1685,9 +1669,10 @@ async function saveToCloud(customPayload = null) {
         showPasswordModal(resJson.message || "Falsches Passwort. Bitte erneut eingeben.");
         return;
       }
-      if (resJson && resJson.status === "error") {
-        throw new Error(resJson.message || "Apps Script Fehler");
+      if (!resJson || resJson.status !== "success") {
+        throw new Error((resJson && resJson.message) ? resJson.message : "Ungültige Antwort vom Apps Script");
       }
+      localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
       setSyncStatus("ok", "☁️ Gespeichert & Synchronisiert");
     } catch (err) {
       clearTimeout(timeoutId);
@@ -2130,7 +2115,7 @@ function renderAttendanceList() {
     }
     const state = currentAttendance[m.id];
     const candidates = getAllMemberNameCandidates(m, unit);
-        const displayName = (unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName)) || candidates[0] || entry.name;
+        const displayName = (unit === "bre" ? (m.breName || m.napoName) : (m.napoName || m.breName)) || candidates[0] || m.id;
 
     const row = document.createElement("div");
     row.className = "attendance-row";
@@ -2692,6 +2677,7 @@ async function deleteTkLog(id) {
   if (!confirm("Diesen Teamkill-Eintrag wirklich löschen?")) return;
   appData.teamkillLogs = (appData.teamkillLogs || []).filter(t => String(t.id) !== String(id));
   await saveToCloud({ action: "deleteTeamkillLog", logId: id });
+  localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
   renderTkHistory();
   renderTkStats();
   renderTkRecords();
@@ -3151,6 +3137,7 @@ async function deleteProtocol(id) {
   if (!confirm("Dieses Protokoll wirklich löschen?")) return;
   appData.protocols = (appData.protocols || []).filter(p => String(p.id) !== String(id));
   await saveToCloud({ action: "deleteEvent", eventId: id });
+  localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
   updateStatsYearDropdown();
   renderHistory();
   showToast("Protokoll gelöscht.");
@@ -4067,6 +4054,7 @@ async function deleteMember(id) {
   renderStatsChart();
   updateOutput();
   await saveToCloud({ action: "deleteMember", memberId: id });
+  localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
   showToast("Mitglied gelöscht & synchronisiert.");
 }
 
@@ -4195,6 +4183,7 @@ async function deleteTemplate(key) {
     renderTemplatesTable();
     onFormatChange();
     await saveToCloud({ action: "deleteTemplate", templateKey: key });
+  localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
     showToast("Template gelöscht & synchronisiert.");
   }
 }
