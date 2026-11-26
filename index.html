@@ -1526,7 +1526,14 @@ async function loadFromCloud(manual = false) {
     }
     applyAuthModeUI();
 
-    if (data) {
+    const hasCloudPayload = data && (
+      Array.isArray(data.protocols) ||
+      Array.isArray(data.teamkillLogs) ||
+      Array.isArray(data.members) ||
+      (data.templates && typeof data.templates === "object")
+    );
+
+    if (hasCloudPayload) {
       const cloudProtocols = Array.isArray(data.protocols) ? data.protocols : [];
       const localProtocols = (localBackupData && Array.isArray(localBackupData.protocols)) ? localBackupData.protocols : [];
       const mergedProtocols = mergeByIdSafe(cloudProtocols, localProtocols, true);
@@ -1554,7 +1561,7 @@ async function loadFromCloud(manual = false) {
       appData.members = mergedMembers;
       appData.templates = Object.keys(mergedTemplates).length > 0 ? mergedTemplates : { ...DEFAULT_TEMPLATES };
 
-      if (hadLocalOnlyProtocols || hadLocalOnlyTkLogs || hadLocalOnlyMembers || hadLocalOnlyTemplates) {
+      if ((hadLocalOnlyProtocols || hadLocalOnlyTkLogs || hadLocalOnlyMembers || hadLocalOnlyTemplates) && isEditorAuthenticated && getStoredAppPassword()) {
         saveToCloud();
       }
       const localEvMap = getLocalExcusedEventsMap();
@@ -1568,6 +1575,15 @@ async function loadFromCloud(manual = false) {
       });
       setSyncStatus("ok", "☁️ Google Sheets verbunden");
       if (manual) showToast("Daten erfolgreich aktualisiert!");
+    } else if (data && data.status === "error") {
+      setSyncStatus("err", "⚠️ Cloud-Fehler: " + (data.message || "Zugriff verweigert"));
+      if (localBackupData) {
+        appData = localBackupData;
+      }
+      if (!appData.teamkillLogs) appData.teamkillLogs = [];
+      if (!appData.templates || Object.keys(appData.templates).length === 0) {
+        appData.templates = { ...DEFAULT_TEMPLATES };
+      }
     }
   } catch (err) {
     setSyncStatus("err", "⚠️ Cloud-Fehler: " + (err && err.message ? err.message : "nicht erreichbar"));
