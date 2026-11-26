@@ -1171,14 +1171,23 @@ function setSyncStatus(state, text) {
   }
 }
 
-function mergeProtocolsSafe(cloudProtocols, localProtocols, deletedIds = []) {
-  const cList = Array.isArray(cloudProtocols) ? cloudProtocols : [];
-  const lList = Array.isArray(localProtocols) ? localProtocols : [];
-  const deletedSet = new Set(Array.isArray(deletedIds) ? deletedIds : []);
+function mergeByIdSafe(cloudList, localList, sortByDate = false) {
+  const cList = Array.isArray(cloudList) ? cloudList : [];
+  const lList = Array.isArray(localList) ? localList : [];
   const byId = new Map();
-  cList.forEach(p => { if (p && p.id && !deletedSet.has(p.id)) byId.set(p.id, p); });
-  lList.forEach(p => { if (p && p.id && !deletedSet.has(p.id) && !byId.has(p.id)) byId.set(p.id, p); });
-  return Array.from(byId.values()).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  cList.forEach(item => { if (item && item.id) byId.set(String(item.id), item); });
+  lList.forEach(item => { if (item && item.id && !byId.has(String(item.id))) byId.set(String(item.id), item); });
+  const merged = Array.from(byId.values());
+  if (sortByDate) {
+    merged.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  }
+  return merged;
+}
+
+function mergeTemplatesSafe(cloudTpls, localTpls) {
+  const cObj = (cloudTpls && typeof cloudTpls === "object") ? cloudTpls : {};
+  const lObj = (localTpls && typeof localTpls === "object") ? localTpls : {};
+  return Object.assign({}, lObj, cObj);
 }
 
 async function loadFromCloud(manual = false) {
@@ -1214,24 +1223,35 @@ async function loadFromCloud(manual = false) {
     }
 
     if (data) {
-      const mergedDeletedIds = Array.from(new Set([
-        ...(Array.isArray(data.deletedProtocolIds) ? data.deletedProtocolIds : []),
-        ...(localBackupData && Array.isArray(localBackupData.deletedProtocolIds) ? localBackupData.deletedProtocolIds : [])
-      ]));
-      const hadUnpersistedDeletions = Array.isArray(data.protocols) && data.protocols.some(p => p && p.id && mergedDeletedIds.includes(p.id));
-      const mergedProtocols = mergeProtocolsSafe(data.protocols, localBackupData && localBackupData.protocols, mergedDeletedIds);
-      const hadLocalOnlyProtocols = (localBackupData && Array.isArray(localBackupData.protocols))
-        ? localBackupData.protocols.some(lp => lp && lp.id && !mergedDeletedIds.includes(lp.id) && !(Array.isArray(data.protocols) && data.protocols.some(cp => cp && cp.id === lp.id)))
-        : false;
+      const cloudProtocols = Array.isArray(data.protocols) ? data.protocols : [];
+      const localProtocols = (localBackupData && Array.isArray(localBackupData.protocols)) ? localBackupData.protocols : [];
+      const mergedProtocols = mergeByIdSafe(cloudProtocols, localProtocols, true);
+      const hadLocalOnlyProtocols = localProtocols.some(lp => lp && lp.id && !cloudProtocols.some(cp => cp && String(cp.id) === String(lp.id)));
+
+      const cloudTkLogs = Array.isArray(data.teamkillLogs) ? data.teamkillLogs : [];
+      const localTkLogs = (localBackupData && Array.isArray(localBackupData.teamkillLogs)) ? localBackupData.teamkillLogs : [];
+      const mergedTkLogs = mergeByIdSafe(cloudTkLogs, localTkLogs, true);
+      const hadLocalOnlyTkLogs = localTkLogs.some(lt => lt && lt.id && !cloudTkLogs.some(ct => ct && String(ct.id) === String(lt.id)));
+
+      const cloudMembers = Array.isArray(data.members) ? data.members : [];
+      const localMembers = (localBackupData && Array.isArray(localBackupData.members)) ? localBackupData.members : [];
+      const mergedMembers = mergeByIdSafe(cloudMembers, localMembers, false);
+      const hadLocalOnlyMembers = localMembers.some(lm => lm && lm.id && !cloudMembers.some(cm => cm && String(cm.id) === String(lm.id)));
+
+      const cloudTemplates = (data.templates && typeof data.templates === "object") ? data.templates : {};
+      const localTemplates = (localBackupData && localBackupData.templates && typeof localBackupData.templates === "object") ? localBackupData.templates : {};
+      const mergedTemplates = mergeTemplatesSafe(cloudTemplates, localTemplates);
+      const hadLocalOnlyTemplates = Object.keys(localTemplates).some(k => !Object.prototype.hasOwnProperty.call(cloudTemplates, k));
+
       appData = data;
-      appData.deletedProtocolIds = mergedDeletedIds;
+      delete appData.deletedProtocolIds;
       appData.protocols = mergedProtocols;
-      if (hadLocalOnlyProtocols || hadUnpersistedDeletions) {
+      appData.teamkillLogs = mergedTkLogs;
+      appData.members = mergedMembers;
+      appData.templates = Object.keys(mergedTemplates).length > 0 ? mergedTemplates : { ...DEFAULT_TEMPLATES };
+
+      if (hadLocalOnlyProtocols || hadLocalOnlyTkLogs || hadLocalOnlyMembers || hadLocalOnlyTemplates) {
         saveToCloud();
-      }
-      if (!appData.teamkillLogs) appData.teamkillLogs = [];
-      if (!appData.templates || Object.keys(appData.templates).length === 0) {
-        appData.templates = { ...DEFAULT_TEMPLATES };
       }
       const localEvMap = getLocalExcusedEventsMap();
       (appData.members || []).forEach(m => {
@@ -1295,23 +1315,24 @@ async function loadFromCloud(manual = false) {
 
 let saveQueuePromise = Promise.resolve();
 
-async function saveToCloud() {
+async function saveToCloud(customPayload = null) {
+  if (Array.isArray(appData.protocols)) {
+    appData.protocols = appData.protocols.map(p => {
+      if (p && p.bbcode && p.summary !== "(Importiertes Protokoll)") {
+        const { bbcode, ...rest } = p;
+        return rest;
+      }
+      return p;
+    });
+  }
   localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
   updateHistoryBadge();
   setSyncStatus("loading", "🔄 Speichere in Cloud...");
 
   const runSave = async () => {
-    if (Array.isArray(appData.protocols)) {
-      appData.protocols = appData.protocols.map(p => {
-        if (p && p.bbcode && p.summary !== "(Importiertes Protokoll)") {
-          const { bbcode, ...rest } = p;
-          return rest;
-        }
-        return p;
-      });
-    }
     localStorage.setItem("kk_protocol_tool_v1", JSON.stringify(appData));
-    const payload = JSON.stringify(appData);
+    const payloadObj = customPayload || { action: "saveAll", data: appData };
+    const payload = JSON.stringify(payloadObj);
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -2332,8 +2353,8 @@ function editTkLog(id) {
 
 async function deleteTkLog(id) {
   if (!confirm("Diesen Teamkill-Eintrag wirklich löschen?")) return;
-  appData.teamkillLogs = (appData.teamkillLogs || []).filter(t => t.id !== id);
-  await saveToCloud();
+  appData.teamkillLogs = (appData.teamkillLogs || []).filter(t => String(t.id) !== String(id));
+  await saveToCloud({ action: "deleteTeamkillLog", logId: id });
   renderTkHistory();
   renderTkStats();
   renderTkRecords();
@@ -2788,10 +2809,8 @@ function editProtocol(id) {
 
 async function deleteProtocol(id) {
   if (!confirm("Dieses Protokoll wirklich löschen?")) return;
-  if (!Array.isArray(appData.deletedProtocolIds)) appData.deletedProtocolIds = [];
-  if (!appData.deletedProtocolIds.includes(id)) appData.deletedProtocolIds.push(id);
-  appData.protocols = (appData.protocols || []).filter(p => p.id !== id);
-  await saveToCloud();
+  appData.protocols = (appData.protocols || []).filter(p => String(p.id) !== String(id));
+  await saveToCloud({ action: "deleteEvent", eventId: id });
   updateStatsYearDropdown();
   renderHistory();
   showToast("Protokoll gelöscht.");
@@ -3693,7 +3712,7 @@ async function deleteMember(id) {
   
   if (!confirm(`Möchtest du '${name}' wirklich unwiderruflich löschen?`)) return;
 
-  appData.members = (appData.members || []).filter(x => x.id !== id);
+  appData.members = (appData.members || []).filter(x => String(x.id) !== String(id));
   
   renderMembers();
   renderAttendanceList();
@@ -3702,7 +3721,7 @@ async function deleteMember(id) {
   renderStats();
   renderStatsChart();
   updateOutput();
-  await saveToCloud();
+  await saveToCloud({ action: "deleteMember", memberId: id });
   showToast("Mitglied gelöscht & synchronisiert.");
 }
 
@@ -3827,7 +3846,7 @@ async function deleteTemplate(key) {
     updateTkStatsFilterDropdown();
     renderTemplatesTable();
     onFormatChange();
-    await saveToCloud();
+    await saveToCloud({ action: "deleteTemplate", templateKey: key });
     showToast("Template gelöscht & synchronisiert.");
   }
 }
