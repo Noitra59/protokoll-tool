@@ -1364,15 +1364,12 @@ async function submitAppPassword(e) {
 async function verifyPasswordWithCloud(pw) {
   try {
     const sep = GOOGLE_SCRIPT_URL.includes("?") ? "&" : "?";
-    const url = `${GOOGLE_SCRIPT_URL}${sep}action=checkAuth&password=${encodeURIComponent(pw)}&t=${Date.now()}`;
+    const url = `${GOOGLE_SCRIPT_URL}${sep}action=verifyPassword&password=${encodeURIComponent(pw)}&t=${Date.now()}`;
     const res = await fetch(url, { method: "GET", redirect: "follow", cache: "no-store" });
+    if (!res.ok) return false;
     const txt = await res.text();
-    let json = null;
-    try { json = JSON.parse(txt); } catch (e) {}
-    if (json && (json.code === "UNAUTHORIZED" || json.authorized === false || (json.status === "error" && /passwort|auth/i.test(json.message || "")))) {
-      return false;
-    }
-    return true;
+    const json = JSON.parse(txt);
+    return Boolean(json && json.status === "success");
   } catch (e) {
     return false;
   }
