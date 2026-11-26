@@ -853,15 +853,22 @@
         </div>
       </div>
 
+      <div style="display:flex; justify-content:flex-end; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+        <label for="stats-display-mode" style="margin:0; font-size:0.85rem;">Anzeige:</label>
+        <select id="stats-display-mode" onchange="renderStats()" style="width:auto; padding:0.35rem 0.6rem; font-size:0.85rem;">
+          <option value="percent" selected>Prozentual (z.B. 95% (161/170))</option>
+          <option value="absolute">Absolute Zahlen</option>
+        </select>
+      </div>
+
       <table>
         <thead>
           <tr>
             <th class="sortable" onclick="sortStatsTable('name')">Mitglied <span id="sort-ind-stats-name"></span></th>
             <th class="sortable" onclick="sortStatsTable('unit')">Einheit <span id="sort-ind-stats-unit"></span></th>
-            <th class="sortable" style="color:var(--success);" onclick="sortStatsTable('pres')">Anwesend <span id="sort-ind-stats-pres"></span></th>
+            <th class="sortable" style="color:var(--success);" onclick="sortStatsTable('pres')">Anwesend <span id="sort-ind-stats-pres">▼</span></th>
             <th class="sortable" style="color:var(--warning);" onclick="sortStatsTable('exc')">Abgemeldet <span id="sort-ind-stats-exc"></span></th>
             <th class="sortable" style="color:var(--danger);" onclick="sortStatsTable('unexc')">Unentschuldigt <span id="sort-ind-stats-unexc"></span></th>
-            <th class="sortable" onclick="sortStatsTable('rate')">Anwesenheitsquote <span id="sort-ind-stats-rate">▼</span></th>
           </tr>
         </thead>
         <tbody id="stats-table-body"></tbody>
@@ -2862,7 +2869,10 @@ function renderStats() {
   if (!tbody) return;
   tbody.innerHTML = "";
 
-  ['name', 'unit', 'pres', 'exc', 'unexc', 'rate'].forEach(c => {
+  const displayModeEl = document.getElementById("stats-display-mode");
+  const displayMode = displayModeEl ? displayModeEl.value : "percent";
+
+  ['name', 'unit', 'pres', 'exc', 'unexc'].forEach(c => {
     const ind = document.getElementById(`sort-ind-stats-${c}`);
     if (ind) {
       if (statsSortCol === c) {
@@ -2972,14 +2982,35 @@ function renderStats() {
 
     if (total === 0) return;
     
-    const rateNum = total > 0 ? Math.round((pres / total) * 100) : 0;
+    const presRateExact = total > 0 ? (pres / total) * 100 : 0;
+    const excRateExact = total > 0 ? (exc / total) * 100 : 0;
+    const unexcRateExact = total > 0 ? (unexc / total) * 100 : 0;
+
+    const presRate = Math.round(presRateExact);
+    const excRate = Math.round(excRateExact);
+    const unexcRate = Math.round(unexcRateExact);
+
     const nameLabel = m.napoName || m.breName || "";
     
     let unitBadges = "";
     if (m.inNapo) unitBadges += `<span class="badge badge-napo">Nr59</span> `;
     if (m.inBre) unitBadges += `<span class="badge badge-bre">Eichenwacht</span>`;
 
-    memberStats.push({ member: m, nameLabel, unitBadges, total, pres, exc, unexc, rateNum });
+    memberStats.push({
+      member: m,
+      nameLabel,
+      unitBadges,
+      total,
+      pres,
+      exc,
+      unexc,
+      presRate,
+      excRate,
+      unexcRate,
+      presRateExact,
+      excRateExact,
+      unexcRateExact
+    });
   });
 
   if (statsSortCol !== null) {
@@ -2994,37 +3025,44 @@ function renderStats() {
         valB = (b.member.inNapo ? "Nr59" : "") + (b.member.inBre ? "Eichenwacht" : "");
         return statsSortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
       } else if (statsSortCol === 'pres') {
-        valA = a.pres;
-        valB = b.pres;
+        valA = displayMode === "percent" ? a.presRateExact : a.pres;
+        valB = displayMode === "percent" ? b.presRateExact : b.pres;
       } else if (statsSortCol === 'exc') {
-        valA = a.exc;
-        valB = b.exc;
+        valA = displayMode === "percent" ? a.excRateExact : a.exc;
+        valB = displayMode === "percent" ? b.excRateExact : b.exc;
       } else if (statsSortCol === 'unexc') {
-        valA = a.unexc;
-        valB = b.unexc;
-      } else if (statsSortCol === 'rate') {
-        valA = a.rateNum;
-        valB = b.rateNum;
+        valA = displayMode === "percent" ? a.unexcRateExact : a.unexc;
+        valB = displayMode === "percent" ? b.unexcRateExact : b.unexc;
       }
       return statsSortAsc ? (valA - valB) : (valB - valA);
     });
+  } else {
+    memberStats.sort((a, b) => {
+      const diff = displayMode === "percent"
+        ? (b.presRateExact - a.presRateExact)
+        : (b.pres - a.pres);
+      return diff !== 0 ? diff : (b.pres - a.pres);
+    });
   }
 
-  memberStats.sort((a, b) => {
-    if (statsSortCol !== null) return 0;
-    return b.rateNum - a.rateNum;
-  });
-
   memberStats.forEach(item => {
-    const m = item.member;
     const tr = document.createElement("tr");
+    const presCell = displayMode === "percent"
+      ? `<strong>${item.presRate}%</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${item.pres}/${item.total})</span>`
+      : `${item.pres}`;
+    const excCell = displayMode === "percent"
+      ? `<strong>${item.excRate}%</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${item.exc}/${item.total})</span>`
+      : `${item.exc}`;
+    const unexcCell = displayMode === "percent"
+      ? `<strong>${item.unexcRate}%</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${item.unexc}/${item.total})</span>`
+      : `${item.unexc}`;
+
     tr.innerHTML = `
       <td><strong>${item.nameLabel}</strong></td>
       <td>${item.unitBadges}</td>
-      <td style="color:var(--success); font-weight:600;">${item.pres}</td>
-      <td style="color:var(--warning);">${item.exc}</td>
-      <td style="color:var(--danger);">${item.unexc}</td>
-      <td><strong>${item.rateNum}%</strong> <span style="color:var(--text-muted); font-size:0.8rem;">(${item.pres}/${item.total})</span></td>
+      <td style="color:var(--success); font-weight:600;">${presCell}</td>
+      <td style="color:var(--warning);">${excCell}</td>
+      <td style="color:var(--danger);">${unexcCell}</td>
     `;
     tbody.appendChild(tr);
   });
